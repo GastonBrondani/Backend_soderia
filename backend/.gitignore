@@ -1,0 +1,23 @@
+# Entorno virtual
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Archivos de entorno
+.env
+
+# Configuración del editor
+.vscode/
+
+# Docker
+pgdata/
+*.log
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# __pycache__ en cualquier subcarpeta
+**/__pycache__/

@@ -1,0 +1,22 @@
+# Framework web
+fastapi
+uvicorn[standard]
+
+# Conexión con PostgreSQL
+psycopg2-binary
+
+# ORM
+sqlalchemy
+
+# Validación de datos
+pydantic
+
+# Variables de entorno
+python-dotenv
+
+# Seguridad (JWT y hashing)
+python-jose[cryptography]
+passlib[bcrypt]
+
+# Testing (opcional)
+pytest
