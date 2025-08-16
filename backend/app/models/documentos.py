@@ -1,18 +1,48 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, TIMESTAMP
-from sqlalchemy.sql import func
+from __future__ import annotations
+from datetime import datetime
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from .cliente import Cliente
+
+from sqlalchemy import Integer, String, Text, DateTime, ForeignKey, text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
+
+SCHEMA = "soderia"
+
 
 class Documentos(Base):
     __tablename__ = "documentos"
-    __table_args__ = {'schema': 'soderia'}
+    __table_args__ = ({"schema": SCHEMA},)
 
-    id_documento = Column(Integer, primary_key=True, index=True)
-    legajo = Column(Integer, nullable=False)
-    nombre_archivo = Column(String(255), nullable=False)
-    tipo_archivo = Column(String(50), nullable=False)
-    url_archivo = Column(String(500), nullable=False)
-    fecha_carga = Column(TIMESTAMP, server_default=func.current_timestamp(), nullable=False)
-    observacion = Column(Text, nullable=True)
+    # PK (serial)
+    id_documento: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    # FK explícita opcional:
-    # legajo = Column(Integer, ForeignKey("soderia.cliente.legajo"), nullable=False)
+    # FK -> cliente.legajo
+    legajo: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey(f"{SCHEMA}.cliente.legajo", name="fk_documentos_cliente"),
+        nullable=False,
+    )
+
+    # Campos
+    nombre_archivo: Mapped[str] = mapped_column(String(255), nullable=False)
+    tipo_archivo: Mapped[str] = mapped_column(String(50), nullable=False)
+    url_archivo: Mapped[str] = mapped_column(String(500), nullable=False)
+    fecha_carga: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    observacion: Mapped[Optional[str]] = mapped_column(Text)
+
+    # --------- RELATIONSHIPS ---------
+    cliente: Mapped["Cliente"] = relationship(
+        "Cliente",
+        back_populates="documentos",
+        lazy="selectin",
+    )
+
+    def __repr__(self) -> str:
+        return f"<Documentos id={self.id_documento} legajo={self.legajo} archivo={self.nombre_archivo}>"

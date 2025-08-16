@@ -1,15 +1,46 @@
-from sqlalchemy import Column, Integer, ForeignKey
-from sqlalchemy.orm import relationship
+from __future__ import annotations
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from .producto import Producto
+    from .empresa import Empresa
+
+from sqlalchemy import Integer, ForeignKey, text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
+
+SCHEMA = "soderia"
+
 
 class Stock(Base):
     __tablename__ = "stock"
-    __table_args__ = {'schema': 'soderia'}
+    __table_args__ = ({"schema": SCHEMA},)
 
-    id_stock = Column(Integer, primary_key=True, index=True)
-    id_producto = Column(Integer, ForeignKey("soderia.producto.id_producto"), nullable=False)
-    cantidad = Column(Integer, nullable=False, default=0)
-    id_empresa = Column(Integer, ForeignKey("soderia.empresa.id_empresa"))
+    # PK (serial)
+    id_stock: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    producto = relationship("Producto", back_populates="stocks")
-    empresa = relationship("Empresa", back_populates="stocks")
+    # FKs
+    id_producto: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey(f"{SCHEMA}.producto.id_producto", name="fk_stock_producto"),
+        nullable=False,
+    )
+    id_empresa: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        ForeignKey(f"{SCHEMA}.empresa.id_empresa", name="fk_stock_empresa"),
+        nullable=True,
+    )
+
+    # Campos
+    cantidad: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+
+    # --------- RELATIONSHIPS (completas) ---------
+    producto: Mapped["Producto"] = relationship(
+        "Producto", back_populates="stocks", lazy="selectin"
+    )
+    empresa: Mapped[Optional["Empresa"]] = relationship(
+        "Empresa", back_populates="stocks", lazy="selectin"
+    )
+
+    def __repr__(self) -> str:
+        return f"<Stock id={self.id_stock} prod={self.id_producto} emp={self.id_empresa} cant={self.cantidad}>"
