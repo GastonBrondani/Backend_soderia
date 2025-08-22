@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 
 services:
   db:
@@ -9,22 +9,49 @@ services:
       POSTGRES_DB: soderia
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: fattorbrondani
+      TZ: America/Argentina/Cordoba
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
+  # Servicio de backend para desarrollo
   backend:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: soderia_backend
-    ports:
-      - "8000:8000"
     env_file:
       - .env
+    ports:
+      - "8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
-      - .:/app
+      - .:/app   # montaje en caliente
+    profiles: ["dev"]
+
+  # Servicio de backend para producción
+  backend-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: soderia_backend_prod
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    # sin volumes en prod
+    profiles: ["prod"]
 
 volumes:
   pgdata:

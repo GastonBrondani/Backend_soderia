@@ -1,23 +1,36 @@
-# Entorno virtual
-venv/
+# Python
 __pycache__/
+**/__pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Archivos de entorno
-.env
+# Virtual envs
+venv/
+.venv/
+env/
 
-# Configuración del editor
+# Environment files
+.env
+.env.local
+
+# Build
+dist/
+build/
+*.sqlite3
+
+# Alembic / testing
+.alembic/
+.pytest_cache/
+
+# Editor / IDE
+.idea/
 .vscode/
 
 # Docker
 pgdata/
 *.log
 
-# Archivos del sistema
+# OS
 .DS_Store
 Thumbs.db
-
-# __pycache__ en cualquier subcarpeta
-**/__pycache__/
