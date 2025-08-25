@@ -19,8 +19,7 @@ dist/
 build/
 *.sqlite3
 
-# Alembic / testing
-.alembic/
+# Testing / cache
 .pytest_cache/
 
 # Editor / IDE

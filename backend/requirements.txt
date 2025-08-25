@@ -20,3 +20,7 @@ passlib[bcrypt]
 
 # Testing (opcional)
 pytest
+
+# Migracion
+alembic
+python-dotenv
