@@ -13,6 +13,8 @@ env/
 # Environment files
 .env
 .env.local
+.env.*        # cualquier otro .env (excepto el example)
+!.env.example
 
 # Build
 dist/
