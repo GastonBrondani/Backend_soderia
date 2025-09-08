@@ -8,7 +8,7 @@ from .cuentaBancariaEmpresa import CuentaBancariaEmpresa
 from .diaSemana import DiaSemana
 from .direccionCliente import DireccionCliente
 from .documentos import Documentos
-from .emailCliente import EmailCliente
+from .emailCliente import MailCliente
 from .empleado import Empleado
 from .empresa import Empresa
 from .historico import Historico
@@ -34,7 +34,7 @@ from .usuarioRol import UsuarioRol
 __all__ = [
     "CajaEmpresa", "CamionReparto", "Cliente", "ClienteCuenta", "ClienteDiaSemana",
     "ClienteRepartoDia", "CuentaBancariaEmpresa", "DiaSemana", "DireccionCliente",
-    "Documentos", "EmailCliente", "Empleado", "Empresa", "Historico",
+    "Documentos", "MailCliente", "Empleado", "Empresa", "Historico",
     "ListaDePrecios", "ListaPrecioProducto", "MedioPago", "MovimientoStock",
     "Pedido", "PedidoProducto", "Persona", "Producto", "ProductoCliente",
     "Recorrido", "RepartoDia", "Rol", "Stock", "TelefonoCliente",

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .producto import Producto
     from .cliente import Cliente
+    
 
 from sqlalchemy import Integer, String, Date, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -17,36 +18,33 @@ class ProductoCliente(Base):
     __tablename__ = "producto_cliente"
     __table_args__ = ({"schema": SCHEMA},)
 
-    # PK compuesta: (id_producto, legajo)
-    id_producto: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey(f"{SCHEMA}.producto.id_producto", name="fk_producto_cliente_producto"),
+    #PKs
+    legajo: Mapped[int] = mapped_column(
+        ForeignKey(f"{SCHEMA}.cliente.legajo"),
         primary_key=True,
         nullable=False,
     )
-    legajo: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey(f"{SCHEMA}.cliente.legajo", name="fk_producto_cliente_cliente"),
+    id_producto: Mapped[int] = mapped_column(
+        ForeignKey(f"{SCHEMA}.producto.id_producto"),
         primary_key=True,
         nullable=False,
     )
 
-    # Campos
+    #Campos
     cantidad: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
-    estado: Mapped[str] = mapped_column(String(20), nullable=False)
+    estado: Mapped[str | None] = mapped_column(String(30))
     fecha_entrega: Mapped[date | None] = mapped_column(Date)
 
-    # --------- RELATIONSHIPS (completas) ---------
+    #Relaciones
     producto: Mapped["Producto"] = relationship(
-        "Producto",
-        back_populates="productos_cliente",   # en Producto: productos_cliente = relationship("ProductoCliente", back_populates="producto")
-        lazy="selectin",
+        "Producto", back_populates="productos_cliente", lazy="selectin"
     )
     cliente: Mapped["Cliente"] = relationship(
-        "Cliente",
-        back_populates="productos",           # en Cliente: productos = relationship("ProductoCliente", back_populates="cliente")
-        lazy="selectin",
-    )
-
+        "Cliente",back_populates="productos",lazy="selectin"
+    )  
+    
     def __repr__(self) -> str:
-        return f"<ProductoCliente prod={self.id_producto} legajo={self.legajo} cant={self.cantidad} estado={self.estado}>"
+        return (
+            f"<ProductoCliente legajo={self.legajo} prod={self.id_producto} "
+            f"cant={self.cantidad} estado={self.estado}>"
+        )

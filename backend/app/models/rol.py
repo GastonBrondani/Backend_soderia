@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING,Optional
 
 if TYPE_CHECKING:
     from .usuarioRol import UsuarioRol
@@ -15,17 +15,15 @@ class Rol(Base):
     __tablename__ = "rol"
     __table_args__ = ({"schema": SCHEMA},)
 
-    # PK
-    id_rol: Mapped[int] = mapped_column(
-        Integer, primary_key=True
-    )
+    #PK
+    id_rol: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    # Campos
+    #Campos
     nombre: Mapped[str] = mapped_column(String(50), nullable=False)
     descripcion: Mapped[Optional[str]] = mapped_column(Text)
 
-    # ---------- RELATIONSHIPS ----------
-    usuarios_roles: Mapped[List["UsuarioRol"]] = relationship(
+    #Relaciones
+    usuarios_rol: Mapped["UsuarioRol"] = relationship(
         "UsuarioRol", back_populates="rol", lazy="selectin"
     )
 

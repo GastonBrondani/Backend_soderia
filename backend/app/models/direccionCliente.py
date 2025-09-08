@@ -15,32 +15,29 @@ class DireccionCliente(Base):
     __tablename__ = "direccion_cliente"
     __table_args__ = ({"schema": SCHEMA},)
 
-    # PK (serial)
+    #PK
     id_direccion: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    # FK -> cliente.legajo
+    #FK
     legajo: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey(f"{SCHEMA}.cliente.legajo", name="fk_direccion_cliente_cliente"),
+        ForeignKey(f"{SCHEMA}.cliente.legajo"),
         nullable=False,
     )
 
-    # Campos
-    direccion: Mapped[str] = mapped_column(String(200), nullable=False)
+    #Campos
+    localidad: Mapped[Optional[str]] = mapped_column(String(100))
+    direccion: Mapped[Optional[str]] = mapped_column(String(200))
     zona: Mapped[Optional[str]] = mapped_column(String(100))
-    entre_calle_1: Mapped[Optional[str]] = mapped_column(String(100))
-    entre_calle_2: Mapped[Optional[str]] = mapped_column(String(100))
+    entre_calle1: Mapped[Optional[str]] = mapped_column(String(100))
+    entre_calle2: Mapped[Optional[str]] = mapped_column(String(100))
     observacion: Mapped[Optional[str]] = mapped_column(Text)
     tipo: Mapped[Optional[str]] = mapped_column(String(50))
-    longitud_latitud: Mapped[Optional[str]] = mapped_column(String(100))
-    localidad: Mapped[str] = mapped_column(String(100), nullable=False)
+    latitud_longitud: Mapped[Optional[str]] = mapped_column(String(100))
 
-    # --------- RELATIONSHIPS (completa) ---------
+    #Relaciones
     cliente: Mapped["Cliente"] = relationship(
-        "Cliente",
-        back_populates="direcciones",
-        lazy="selectin",
+        "Cliente",back_populates="direcciones",lazy="selectin"
     )
 
     def __repr__(self) -> str:
-        return f"<DireccionCliente id={self.id_direccion} legajo={self.legajo} {self.direccion}>"
+        return f"<DireccionCliente id={self.id_direccion} legajo={self.legajo} direccion={self.direccion}>"

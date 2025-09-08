@@ -1,11 +1,10 @@
 from __future__ import annotations
-from datetime import date
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
     from .listaPrecioProducto import ListaPrecioProducto
 
-from sqlalchemy import Integer, String, Date, text
+from sqlalchemy import Integer, String, DateTime, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -16,17 +15,25 @@ class ListaDePrecios(Base):
     __tablename__ = "lista_de_precios"
     __table_args__ = ({"schema": SCHEMA},)
 
-    # PK (serial)
+    #PK
     id_lista: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    # Campos
+    #Campos
     nombre: Mapped[str] = mapped_column(String(100), nullable=False)
-    fecha_creacion: Mapped[date] = mapped_column(Date, nullable=False, server_default=text("CURRENT_DATE"))
-    estado: Mapped[str] = mapped_column(String(20), nullable=False)
+    fecha_creacion: Mapped["DateTime"] = mapped_column(
+        DateTime(timezone=False),
+        nullable=False,
+        server_default=text("now()"),
+    )
+    estado: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        server_default=text("'activo'"),
+    )
 
-    # --------- RELATIONSHIPS ---------
-    productos: Mapped[List["ListaPrecioProducto"]] = relationship(
-        "ListaPrecioProducto", back_populates="lista", lazy="selectin"
+    #Relaciones
+    lista_productos: Mapped[List["ListaPrecioProducto"]] = relationship(
+        "ListaPrecioProducto",back_populates="lista",lazy="selectin"
     )
 
     def __repr__(self) -> str:

@@ -17,32 +17,33 @@ class ClienteCuenta(Base):
     __tablename__ = "cliente_cuenta"
     __table_args__ = ({"schema": SCHEMA},)
 
-    # PK
-    id_cuenta: Mapped[int] = mapped_column(
-        Integer, primary_key=True
-    )
+    #PK
+    id_cuenta: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    # FK -> cliente.legajo
+    #FK
     legajo: Mapped[int] = mapped_column(
-        ForeignKey(f"{SCHEMA}.cliente.legajo", name="fk_cliente_cuenta_cliente"),
+        ForeignKey(f"{SCHEMA}.cliente.legajo"),
         nullable=False,
     )
 
-    # Campos
+    #Campos
     saldo: Mapped[Decimal] = mapped_column(
-        Numeric(10, 2), nullable=False, server_default=text("0.00")
+        Numeric(14, 2), server_default=text("0")
     )
     deuda: Mapped[Decimal] = mapped_column(
-        Numeric(10, 2), nullable=False, server_default=text("0.00")
+        Numeric(14, 2), server_default=text("0")
     )
-    estado: Mapped[str] = mapped_column(String(20), nullable=False)
-    tipo_de_cuenta: Mapped[str] = mapped_column(String(30), nullable=False)
-    numero_bidones: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    estado: Mapped[str | None] = mapped_column(String(30))
+    tipo_de_cuenta: Mapped[str | None] = mapped_column(String(50))
+    numero_bidones: Mapped[int | None] = mapped_column(Integer, server_default=text("0"))
 
-    # --------- RELATIONSHIPS ---------
-    cliente: Mapped["Cliente"] = relationship("Cliente", back_populates="cuentas", lazy="selectin")
+    #Relación
+    cliente: Mapped["Cliente"] = relationship(
+        "Cliente", back_populates="cuentas", lazy="selectin"
+    )
 
     def __repr__(self) -> str:
-        return f"<ClienteCuenta id={self.id_cuenta} legajo={self.legajo} saldo={self.saldo} deuda={self.deuda}>"
+        return (
+            f"<ClienteCuenta id={self.id_cuenta} legajo={self.legajo} "
+            f"saldo={self.saldo} deuda={self.deuda}>"
+        )

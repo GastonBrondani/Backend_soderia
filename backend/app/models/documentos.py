@@ -16,32 +16,29 @@ class Documentos(Base):
     __tablename__ = "documentos"
     __table_args__ = ({"schema": SCHEMA},)
 
-    # PK (serial)
+    #PK
     id_documento: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    # FK -> cliente.legajo
+    #FK
     legajo: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey(f"{SCHEMA}.cliente.legajo", name="fk_documentos_cliente"),
+        ForeignKey(f"{SCHEMA}.cliente.legajo"),
         nullable=False,
     )
 
-    # Campos
+    #Campos
     nombre_archivo: Mapped[str] = mapped_column(String(255), nullable=False)
-    tipo_archivo: Mapped[str] = mapped_column(String(50), nullable=False)
+    tipo_archivo: Mapped[Optional[str]] = mapped_column(String(50))
     url_archivo: Mapped[str] = mapped_column(String(500), nullable=False)
     fecha_carga: Mapped[datetime] = mapped_column(
         DateTime(timezone=False),
         nullable=False,
-        server_default=text("CURRENT_TIMESTAMP"),
+        server_default=text("now()"),
     )
     observacion: Mapped[Optional[str]] = mapped_column(Text)
 
-    # --------- RELATIONSHIPS ---------
+    #Relación
     cliente: Mapped["Cliente"] = relationship(
-        "Cliente",
-        back_populates="documentos",
-        lazy="selectin",
+        "Cliente",back_populates="documentos",lazy="selectin"
     )
 
     def __repr__(self) -> str:

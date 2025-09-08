@@ -15,17 +15,15 @@ class TipoEvento(Base):
     __tablename__ = "tipo_evento"
     __table_args__ = ({"schema": SCHEMA},)
 
-    # PK (serial)
+    #PK
     id_evento: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    # Campos
+    #Campos
     nombre: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    # --------- RELATIONSHIPS (completa) ---------
+    #Relaciones
     historicos: Mapped[List["Historico"]] = relationship(
-        "Historico",
-        back_populates="tipo_evento",  # en Historico: tipo_evento = relationship("TipoEvento", back_populates="historicos")
-        lazy="selectin",
+        "Historico", back_populates="evento", lazy="selectin"
     )
 
     def __repr__(self) -> str:

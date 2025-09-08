@@ -9,14 +9,14 @@ if TYPE_CHECKING:
     from .clienteRepartoDia import ClienteRepartoDia
     from .direccionCliente import DireccionCliente
     from .documentos import Documentos
-    from .emailCliente import EmailCliente
+    from .emailCliente import MailCliente
     from .historico import Historico
     from .pedido import Pedido
     from .productoCliente import ProductoCliente
     from .telefonoCliente import TelefonoCliente
     from .usuario import Usuario
 
-from sqlalchemy import Integer, String, Text, ForeignKey
+from sqlalchemy import Integer, Text, ForeignKey, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -28,46 +28,65 @@ class Cliente(Base):
     __tablename__ = "cliente"
     __table_args__ = ({"schema": SCHEMA},)
 
-    # PK
+    #PK
     legajo: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    # FKs
+    #FKs
     id_empresa: Mapped[int] = mapped_column(
-        ForeignKey(f"{SCHEMA}.empresa.id_empresa", name="fk_cliente_empresa"),
+        ForeignKey(f"{SCHEMA}.empresa.id_empresa"),
         nullable=False,
     )
-    dni: Mapped[str] = mapped_column(
-        String(20),
-        ForeignKey(f"{SCHEMA}.persona.dni", name="fk_cliente_persona"),
+    dni: Mapped[int] = mapped_column(            
+        BigInteger,
+        ForeignKey(f"{SCHEMA}.persona.dni"),
         nullable=False,
     )
 
-    # Campos
-    observacion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    #Campos
+    observacion: Mapped[Optional[str]] = mapped_column(Text)
 
-    # Many-to-one
-    empresa: Mapped["Empresa"] = relationship("Empresa", lazy="selectin")
-    persona: Mapped["Persona"] = relationship("Persona", lazy="selectin")
-
-    # One-to-many (hijos que referencian Cliente)
-    cuentas: Mapped[List["ClienteCuenta"]] = relationship("ClienteCuenta", lazy="selectin")
-    dias_semana: Mapped[List["ClienteDiaSemana"]] = relationship("ClienteDiaSemana", lazy="selectin")
-    repartos_dia: Mapped[List["ClienteRepartoDia"]] = relationship("ClienteRepartoDia", lazy="selectin")
-    direcciones: Mapped[List["DireccionCliente"]] = relationship("DireccionCliente", lazy="selectin")
-    documentos: Mapped[List["Documentos"]] = relationship("Documentos", lazy="selectin")
-    emails: Mapped[List["EmailCliente"]] = relationship("EmailCliente", lazy="selectin")
-    historicos: Mapped[List["Historico"]] = relationship("Historico", lazy="selectin")
-    pedidos: Mapped[List["Pedido"]] = relationship("Pedido", lazy="selectin")
-    productos: Mapped[List["ProductoCliente"]] = relationship("ProductoCliente", lazy="selectin")
-    telefonos: Mapped[List["TelefonoCliente"]] = relationship("TelefonoCliente", lazy="selectin")
-    #usuarios: Mapped[List["Usuario"]] = relationship("Usuario", lazy="selectin")
-    usuarios: Mapped[List["Usuario"]] = relationship(
-        "Usuario",
-        back_populates="cliente",
-        lazy="selectin",
-        primaryjoin="Cliente.legajo==foreign(Usuario.legajo)",
+    #Relaciones 
+    empresa: Mapped["Empresa"] = relationship(
+        "Empresa",back_populates="clientes",lazy="selectin"
+    )
+    
+    persona: Mapped["Persona"] = relationship(
+        "Persona",back_populates="clientes",lazy="selectin"    
+    )
+    
+    cuentas: Mapped[List["ClienteCuenta"]] = relationship(
+        "ClienteCuenta", back_populates="cliente", lazy="selectin"
+    )
+    direcciones: Mapped[List["DireccionCliente"]] = relationship(
+        "DireccionCliente", back_populates="cliente", lazy="selectin"
+    )
+    documentos: Mapped[List["Documentos"]] = relationship(
+        "Documentos", back_populates="cliente", lazy="selectin"
+    )
+    emails: Mapped[List["MailCliente"]] = relationship(
+        "MailCliente", back_populates="cliente", lazy="selectin"
+    )
+    historicos: Mapped[List["Historico"]] = relationship(
+        "Historico", back_populates="cliente", lazy="selectin"
+    )
+    pedidos: Mapped[List["Pedido"]] = relationship(
+        "Pedido", back_populates="cliente", lazy="selectin"
+    )
+    productos: Mapped[List["ProductoCliente"]] = relationship(
+        "ProductoCliente", back_populates="cliente", lazy="selectin"
+    )
+    telefonos: Mapped[List["TelefonoCliente"]] = relationship(
+        "TelefonoCliente", back_populates="cliente", lazy="selectin"
+    )
+    usuario: Mapped["Usuario"] = relationship(
+        "Usuario",back_populates="cliente",lazy="selectin"
+    )
+    dias_semanas: Mapped[List["ClienteDiaSemana"]] = relationship(
+        "ClienteDiaSemana", back_populates="cliente", lazy="selectin"
+    )
+    repartos_dias: Mapped[List["ClienteRepartoDia"]] = relationship(
+        "ClienteRepartoDia", back_populates="cliente", lazy="selectin"
     )
 
     def __repr__(self) -> str:
         return f"<Cliente legajo={self.legajo} dni={self.dni} empresa={self.id_empresa}>"
-

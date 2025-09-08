@@ -21,13 +21,13 @@ class Empresa(Base):
     __tablename__ = "empresa"
     __table_args__ = ({"schema": SCHEMA},)
 
-    # PK (serial)
+    #PK
     id_empresa: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    # Campos
-    razon_social: Mapped[str] = mapped_column(String(100), nullable=False)
+    #Campos
+    razon_social: Mapped[str] = mapped_column(String(150), nullable=False)
 
-    # --------- RELATIONSHIPS ---------
+    #Relaciones
     caja_empresas: Mapped[List["CajaEmpresa"]] = relationship(
         "CajaEmpresa", back_populates="empresa", lazy="selectin"
     )
@@ -43,7 +43,7 @@ class Empresa(Base):
     pedidos: Mapped[List["Pedido"]] = relationship(
         "Pedido", back_populates="empresa", lazy="selectin"
     )
-    repartos_dia: Mapped[List["RepartoDia"]] = relationship(
+    repartos_dias: Mapped[List["RepartoDia"]] = relationship(
         "RepartoDia", back_populates="empresa", lazy="selectin"
     )
     stocks: Mapped[List["Stock"]] = relationship(

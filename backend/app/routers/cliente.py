@@ -53,18 +53,8 @@ def CrearCliente(payload: ClienteCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error creando cliente: {e}")
     
 @router.get("/", response_model=List[ClienteOut])
-def ListarClientes(limit: int = 50,offset: int = 0,db: Session = Depends(get_db),):
-    """ -limit y offset son para paginación en el GET /clientes.
-        -limit: int = 50 → cuántos registros como máximo devolver (por defecto 50).
-        -offset: int = 0 → cuántos registros saltar desde el inicio (por defecto 0, o sea desde el primero).
-    """
-    q = (
-        db.query(Cliente)
-        .options(selectinload(Cliente.persona))
-        .offset(offset)
-        .limit(limit)
-    )
-    return q.all()
+def ListarClientes(db: Session = Depends(get_db),):
+        return db.query(Cliente).options(selectinload(Cliente.persona)).all()
 
 
 @router.get("/{legajo}", response_model=ClienteOut)

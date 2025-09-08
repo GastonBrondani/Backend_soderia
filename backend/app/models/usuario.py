@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, List, Optional
 if TYPE_CHECKING:
     from .cliente import Cliente
     from .empleado import Empleado
-    from .persona import Persona
     from .repartoDia import RepartoDia
     from .usuarioRol import UsuarioRol
 
@@ -19,49 +18,36 @@ class Usuario(Base):
     __tablename__ = "usuario"
     __table_args__ = ({"schema": SCHEMA},)
 
-    # PK
+    #PK
     id_usuario: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    # FK
-    legajo: Mapped[int] = mapped_column(Integer, nullable=False)  
-    dni: Mapped[Optional[str]] = mapped_column(String(20), unique=True)
+    #Campos
+    nombre_usuario: Mapped[str] = mapped_column(String(100), nullable=False)
+    contraseña: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    # Campos
-    nombre_usuario: Mapped[str] = mapped_column(String(50), nullable=False)
-    contraseña: Mapped[str] = mapped_column(String(100), nullable=False)
-
-    # --------- RELATIONSHIPS ---------
-    cliente: Mapped[Optional["Cliente"]] = relationship(
-        "Cliente",
-        back_populates="usuarios",        # en Cliente → usuarios = relationship("Usuario", back_populates="cliente")
-        foreign_keys=[legajo],
-        lazy="selectin",
+    #FKs
+    legajo_empleado: Mapped[Optional[int]] = mapped_column(
+        ForeignKey(f"{SCHEMA}.empleado.legajo")
+    )
+    legajo_cliente: Mapped[Optional[int]] = mapped_column(
+        ForeignKey(f"{SCHEMA}.cliente.legajo")
     )
 
-    empleado: Mapped[Optional["Empleado"]] = relationship(
-        "Empleado",
-        back_populates="usuarios",        # en Empleado → usuarios = relationship("Usuario", back_populates="empleado")
-        foreign_keys=[legajo],
-        lazy="selectin",
+    #Relaciones
+    empleado: Mapped["Empleado"] = relationship(
+        "Empleado",back_populates="usuarios",lazy="selectin"
     )
 
-    persona: Mapped[Optional["Persona"]] = relationship(
-        "Persona",
-        back_populates="usuarios",        # en Persona → usuarios = relationship("Usuario", back_populates="persona")
-        foreign_keys=[dni],
-        lazy="selectin",
+    cliente: Mapped["Cliente"] = relationship(
+        "Cliente",back_populates="usuario",lazy="selectin"
     )
 
-    reparto_dias: Mapped[List["RepartoDia"]] = relationship(
-        "RepartoDia",
-        back_populates="usuario",
-        lazy="selectin",
+    reparto_dia: Mapped["RepartoDia"] = relationship(
+        "RepartoDia", back_populates="usuario", lazy="selectin"
     )
 
     usuario_roles: Mapped[List["UsuarioRol"]] = relationship(
-        "UsuarioRol",
-        back_populates="usuario",         # en UsuarioRol → usuario = relationship("Usuario", back_populates="usuario_roles")
-        lazy="selectin",
+        "UsuarioRol",back_populates="usuario",lazy="selectin"
     )
 
     def __repr__(self) -> str:

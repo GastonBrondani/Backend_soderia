@@ -6,13 +6,13 @@ class PersonaBase(BaseModel):
     apellido : str
 
 class PersonaCreate(PersonaBase):
-    dni: str #Pk, es obligatorio para la creacion.
+    dni: int #Pk, es obligatorio para la creacion.
 
 class PersonaUpdate(BaseModel):
     nombre: Optional[str]
     apellido: Optional[str]
 
 class PersonaOut(PersonaBase):
-    dni: str
+    dni: int
     model_config = ConfigDict(from_attributes=True)
 
