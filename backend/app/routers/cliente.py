@@ -29,13 +29,13 @@ def CrearCliente(payload: ClienteCreate, db: Session = Depends(get_db)):
 
         # Evitar duplicado por regla de negocio (dni, id_empresa)
         duplicado = db.query(Cliente).filter(
-            and_(Cliente.dni == dni_final, Cliente.id_empresa == payload.id_empresa)
+            and_(Cliente.dni == dni_final, Cliente.id_empresa == 1)
         ).first()
         if duplicado:
             raise HTTPException(status_code=409, detail="Ya existe un cliente para ese DNI en esa empresa.")
         
         nuevo = Cliente(
-            id_empresa=payload.id_empresa,
+            id_empresa=1, #Es uno porque ya cree la empresa y tiene id 1
             dni=dni_final,
             observacion=payload.observacion,
         )
@@ -77,14 +77,18 @@ def ActualizarCliente(legajo: int, payload: ClienteUpdate, db: Session = Depends
         if not cliente:
             raise HTTPException(status_code=404, detail="Cliente no encontrado")
 
-        # actualizar campos del cliente
-        data_cliente = payload.model_dump(exclude_unset=True)
+        # dump parcial, EXCLUYENDO id_empresa para que jamás lo toquemos
+        data_cliente = payload.model_dump(
+            exclude_unset=True,
+            exclude={"id_empresa"}
+        )
         persona_patch = data_cliente.pop("persona", None)
 
+        # setear solo campos con valor NO None (evita overwrites a NULL)
         for campo, valor in data_cliente.items():
-            setattr(cliente, campo, valor)
+            if valor is not None:
+                setattr(cliente, campo, valor)
 
-        # actualizar (opcional) nombre/apellido de la persona vinculada
         if persona_patch:
             persona = db.get(Persona, cliente.dni)
             if not persona:
@@ -94,13 +98,12 @@ def ActualizarCliente(legajo: int, payload: ClienteUpdate, db: Session = Depends
                     setattr(persona, campo, valor)
 
         db.commit()
-        db.refresh(cliente)
-        # asegurar persona cargada en salida
+        # asegurar persona en salida
         cliente = (
             db.query(Cliente)
-            .options(selectinload(Cliente.persona))
-            .filter(Cliente.legajo == legajo)
-            .first()
+              .options(selectinload(Cliente.persona))
+              .filter(Cliente.legajo == legajo)
+              .first()
         )
         return cliente
 
@@ -109,6 +112,7 @@ def ActualizarCliente(legajo: int, payload: ClienteUpdate, db: Session = Depends
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error actualizando cliente: {e}")
+
 
 
 @router.delete("/{legajo}", status_code=status.HTTP_204_NO_CONTENT)

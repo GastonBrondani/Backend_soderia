@@ -1,6 +1,7 @@
 from fastapi import APIRouter,Depends,HTTPException,status
 from sqlalchemy.orm import Session
 from typing import List
+from sqlalchemy import select, delete
 
 from app.database import get_db
 from app.models.persona import Persona
@@ -14,7 +15,7 @@ def ListarPersonas(db:Session=Depends(get_db)):
     return db.query(Persona).all()
 
 @router.get("/{dni}",response_model=PersonaOut)
-def BuscarPersona(dni:str,db:Session=Depends(get_db)):
+def BuscarPersona(dni:int,db:Session=Depends(get_db)):
     persona = db.get(Persona,dni)
     if not persona:
         raise HTTPException(status_code=404,detail="Persona no encontrada.")
@@ -31,7 +32,7 @@ def CrearPersona(data:PersonaCreate,db:Session=Depends(get_db)):
     return persona
 
 @router.put("/{dni}",response_model=PersonaOut)
-def ActualizarPersona(dni:str,data:PersonaUpdate,db:Session=Depends(get_db)):
+def ActualizarPersona(dni:int,data:PersonaUpdate,db:Session=Depends(get_db)):
     persona = db.get(Persona,dni)
     if not persona:
         raise HTTPException(status_code=404,detail="Persona no encontrada.")
@@ -42,11 +43,15 @@ def ActualizarPersona(dni:str,data:PersonaUpdate,db:Session=Depends(get_db)):
     return persona
 
 @router.delete("/{dni}",status_code=status.HTTP_204_NO_CONTENT)
-def EliminarPersona(dni:str,db:Session=Depends(get_db)):
-    persona = db.get(Persona,dni)
-    if not persona:
-        raise HTTPException(status_code=404,detail="Persona no encontrada.")
-    db.delete(persona)
+def EliminarPersona(dni:int,db:Session=Depends(get_db)):
+    existe = db.execute(
+        select(Persona.dni).where(Persona.dni == dni).limit(1)
+    ).scalar_one_or_none()
+    if existe is None:
+        raise HTTPException(status_code=404, detail="Persona no encontrada")
+
+    # 2) Borro directo en SQL Core -> deja que la BD haga CASCADE
+    db.execute(delete(Persona).where(Persona.dni == dni))
     db.commit()
     return None
 

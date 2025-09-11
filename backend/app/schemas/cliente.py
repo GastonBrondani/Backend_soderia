@@ -2,13 +2,12 @@ from typing import Optional
 from pydantic import BaseModel,ConfigDict,model_validator
 from app.schemas.persona import PersonaCreate,PersonaOut,PersonaUpdate
 
-class ClienteBase(BaseModel):
-    id_empresa: int
+class ClienteBase(BaseModel):    
     observacion: Optional[str] = None
 
 class ClienteCreate(ClienteBase):
     # Pasamos el dni para crearlo
-    dni: Optional[str] = None
+    dni: Optional[int] = None
     # o pasamos a la persona completa para crearlo
     persona: Optional[PersonaCreate] = None
 
@@ -20,14 +19,12 @@ class ClienteCreate(ClienteBase):
             raise ValueError("Si envías 'dni' y 'persona', ambos deben coincidir.")
         return self
     
-class ClienteUpdate(BaseModel):
-    id_empresa: Optional[int] = None
-    observacion: Optional[str] = None
-    # permitir actualizar nombre/apellido de la persona vinculada
+class ClienteUpdate(BaseModel):    
+    observacion: Optional[str] = None    
     persona: Optional[PersonaUpdate] = None
 
 class ClienteOut(ClienteBase):
     legajo: int
-    dni: str
+    dni: int
     persona: Optional[PersonaOut] = None
     model_config = ConfigDict(from_attributes=True)

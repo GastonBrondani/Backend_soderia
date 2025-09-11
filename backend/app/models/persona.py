@@ -26,7 +26,7 @@ class Persona(Base):
 
     #Relaciones
     clientes: Mapped[List["Cliente"]] = relationship(
-        "Cliente",back_populates="persona",lazy="selectin"
+        "Cliente",back_populates="persona",lazy="selectin",passive_deletes=True,
     )
     
     empleado: Mapped["Empleado"] = relationship(
