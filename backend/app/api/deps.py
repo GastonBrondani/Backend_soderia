@@ -1,6 +1,6 @@
 from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.database import get_db
+from backend.app.core.database import get_db
 from app.models.cliente import Cliente
 
 #Funcion usada para verificar si el cliente existe en la base de datos
