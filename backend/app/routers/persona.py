@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from sqlalchemy import select, delete
 
-from backend.app.core.database import get_db
+from app.core.database import get_db
 from app.models.persona import Persona
 from app.schemas.persona import PersonaCreate,PersonaOut,PersonaUpdate
 

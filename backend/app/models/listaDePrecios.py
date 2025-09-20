@@ -6,7 +6,7 @@ if TYPE_CHECKING:
 
 from sqlalchemy import Integer, String, DateTime, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from backend.app.core.database import Base
+from app.core.database import Base
 
 SCHEMA = "soderia"
 

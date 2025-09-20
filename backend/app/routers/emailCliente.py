@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException,status
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from backend.app.core.database import get_db
+from app.core.database import get_db
 from app.models.emailCliente import MailCliente
 from app.api.deps import get_cliente_or_404_dep
 from app.schemas.emailCliente import MailClienteCreate, MailClienteUpdate, MailClienteOut

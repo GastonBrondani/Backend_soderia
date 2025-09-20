@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 from sqlalchemy import String, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from backend.app.core.database import Base
+from app.core.database import Base
 
 SCHEMA = "soderia"
 

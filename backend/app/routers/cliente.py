@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from sqlalchemy.orm import Session,selectinload
 from sqlalchemy import and_
-from backend.app.core.database import get_db
+from app.core.database import get_db
 from app.models.cliente import Cliente
 from app.models.persona import Persona
 from app.schemas.cliente import ClienteCreate, ClienteOut,ClienteUpdate
