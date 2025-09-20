@@ -3,28 +3,23 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from app.database import get_db
 from app.models.emailCliente import MailCliente
-from app.models.cliente import Cliente
+from app.api.deps import get_cliente_or_404_dep
 from app.schemas.emailCliente import MailClienteCreate, MailClienteUpdate, MailClienteOut
 from typing import List
 
 
 router = APIRouter(prefix="/clientes/{legajo}/emails", tags=["Emails Cliente"])
 
-def get_cliente_or_404(db: Session, legajo: int) -> Cliente:
-    cliente = db.get(Cliente, legajo)
-    if not cliente:
-        raise HTTPException(status_code=404, detail="Cliente no encontrado.")
-    return cliente
 
 @router.get("/", response_model=List[MailClienteOut])
 def ListarEmails(legajo: int, db: Session = Depends(get_db)):
-    get_cliente_or_404(db, legajo)    
+    get_cliente_or_404_dep(legajo, db)
     rows = db.execute(select(MailCliente).where(MailCliente.legajo == legajo).order_by(MailCliente.id_mail)).scalars().all()
     return rows
 
 @router.post("/", response_model=MailClienteOut,status_code=status.HTTP_201_CREATED)
 def CrearEmail(legajo:int, playload:MailClienteCreate, db:Session=Depends(get_db)):
-    get_cliente_or_404(db, legajo)    
+    get_cliente_or_404_dep(legajo, db)    
     
     nuevo= MailCliente(legajo=legajo,mail=str(playload.mail).lower(),
                        estado=playload.estado,
@@ -40,7 +35,7 @@ def CrearEmail(legajo:int, playload:MailClienteCreate, db:Session=Depends(get_db
 
 @router.put("/{id_mail}", response_model=MailClienteOut)
 def ActualizarEmail(legajo:int, id_mail:int, playload:MailClienteUpdate, db:Session=Depends(get_db)):
-    get_cliente_or_404(db, legajo)    
+    get_cliente_or_404_dep(legajo, db)
     obj=db.get(MailCliente,id_mail)
     if not obj or obj.legajo != legajo:
         raise HTTPException(status_code=404,detail="Email no encontrado para este cliente.")
@@ -62,7 +57,7 @@ def ActualizarEmail(legajo:int, id_mail:int, playload:MailClienteUpdate, db:Sess
 
 @router.delete("/{id_mail}",status_code=status.HTTP_204_NO_CONTENT)
 def EliminarEmail(legajo:int, id_mail:int, db:Session=Depends(get_db)):
-    get_cliente_or_404(db, legajo)    
+    get_cliente_or_404_dep(legajo, db)
     obj = db.get(MailCliente,id_mail)
     if not obj or obj.legajo != legajo:
         raise HTTPException(status_code=404,detail="Email no encontrado para este cliente.")

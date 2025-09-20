@@ -3,27 +3,23 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from app.database import get_db
 from app.models.telefonoCliente import TelefonoCliente
-from app.models.cliente import Cliente
+from app.api.deps import get_cliente_or_404_dep
 from app.schemas.telefonoCliente import TelefonoClienteCreate, TelefonoClienteUpdate, TelefonoClienteOut
 from typing import List
 
 router = APIRouter(prefix="/clientes/{legajo}/telefonos", tags=["Teléfonos Cliente"])
 
-def get_cliente_or_404(db: Session, legajo: int) -> Cliente:
-    cliente = db.get(Cliente, legajo)
-    if not cliente:
-        raise HTTPException(status_code=404, detail="Cliente no encontrado.")
-    return cliente
+
 
 @router.get("/", response_model=List[TelefonoClienteOut])
 def ListarTelefonos(legajo: int, db: Session = Depends(get_db)):
-    get_cliente_or_404(db, legajo)    
+    get_cliente_or_404_dep(legajo, db)
     rows = db.execute(select(TelefonoCliente).where(TelefonoCliente.legajo == legajo).order_by(TelefonoCliente.id_telefono)).scalars().all()
     return rows
 
 @router.post("/", response_model=TelefonoClienteOut,status_code=status.HTTP_201_CREATED)
 def CrearTelefono(legajo:int, playload:TelefonoClienteCreate, db:Session=Depends(get_db)):
-    get_cliente_or_404(db, legajo)    
+    get_cliente_or_404_dep(legajo, db)    
     
     nuevo= TelefonoCliente(legajo=legajo,
                           nro_telefono=playload.nro_telefono,
@@ -40,7 +36,7 @@ def CrearTelefono(legajo:int, playload:TelefonoClienteCreate, db:Session=Depends
 
 @router.put("/{id_telefono}", response_model=TelefonoClienteOut)
 def ActualizarTelefono(legajo:int, id_telefono:int, playload:TelefonoClienteUpdate, db:Session=Depends(get_db)):
-    get_cliente_or_404(db, legajo)    
+    get_cliente_or_404_dep(legajo, db)    
     obj=db.get(TelefonoCliente,id_telefono)
     if not obj or obj.legajo != legajo:
         raise HTTPException(status_code=404,detail="Teléfono no encontrado para este cliente.")
@@ -60,7 +56,7 @@ def ActualizarTelefono(legajo:int, id_telefono:int, playload:TelefonoClienteUpda
 
 @router.delete("/{id_telefono}", status_code=status.HTTP_204_NO_CONTENT)
 def EliminarTelefono(legajo:int, id_telefono:int, db:Session=Depends(get_db)):
-    get_cliente_or_404(db, legajo)    
+    get_cliente_or_404_dep(legajo, db)
     obj=db.get(TelefonoCliente,id_telefono)
     if not obj or obj.legajo != legajo:
         raise HTTPException(status_code=404,detail="Teléfono no encontrado para este cliente.")
