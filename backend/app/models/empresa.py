@@ -5,6 +5,7 @@ if TYPE_CHECKING:
     from .cajaEmpresa import CajaEmpresa
     from .camionReparto import CamionReparto
     from .cliente import Cliente
+    from .empleado import Empleado
     from .cuentaBancariaEmpresa import CuentaBancariaEmpresa
     from .pedido import Pedido
     from .repartoDia import RepartoDia
@@ -36,6 +37,9 @@ class Empresa(Base):
     )
     clientes: Mapped[List["Cliente"]] = relationship(
         "Cliente", back_populates="empresa", lazy="selectin"
+    )
+    empleados: Mapped[List["Empleado"]] = relationship(
+        "Empleado", back_populates="empresa", lazy="selectin"
     )
     cuentas_bancarias: Mapped[List["CuentaBancariaEmpresa"]] = relationship(
         "CuentaBancariaEmpresa", back_populates="empresa", lazy="selectin"

@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from .persona import Persona
     from .recorrido import Recorrido
     from .usuario import Usuario
+    from .empresa import Empresa
 
 from sqlalchemy import Integer, BigInteger, Date,ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -27,8 +28,15 @@ class Empleado(Base):
         ForeignKey(f"{SCHEMA}.persona.dni"),
         nullable=False,                                  
     )
+    id_empresa: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey(f"{SCHEMA}.empresa.id_empresa"),  
+        nullable=False,
+        index=True,
+    )
+
     #Campos
-    id_usuario: Mapped[int | None] = mapped_column(Integer)      
+          
     fecha_ingreso: Mapped[date | None] = mapped_column(Date)
 
     #Relaciones
@@ -43,6 +51,8 @@ class Empleado(Base):
     usuarios: Mapped["Usuario"] = relationship(
         "Usuario",back_populates="empleado",lazy="selectin"
     )
+
+    empresa: Mapped["Empresa"] = relationship("Empresa", back_populates="empleados")
 
     def __repr__(self) -> str:
         return f"<Empleado legajo={self.legajo} dni={self.dni} ingreso={self.fecha_ingreso}>"

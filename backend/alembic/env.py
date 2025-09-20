@@ -14,8 +14,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import app.models
 
 # Importá tu Base (metadatos) y, si querés, tu engine
-from backend.app.core.database import Base
-from backend.app.core.database import engine
+from app.core.database import Base
+from app.core.database import engine
 
 # Configuración de Alembic
 config = context.config
