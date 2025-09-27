@@ -27,8 +27,7 @@ class ListaDePrecios(Base):
     )
     estado: Mapped[str] = mapped_column(
         String(20),
-        nullable=False,
-        server_default=text("'activo'"),
+        nullable=False        
     )
 
     #Relaciones

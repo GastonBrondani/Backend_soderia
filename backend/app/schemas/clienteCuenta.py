@@ -10,15 +10,11 @@ class ClienteCuentaBase(BaseModel):
     numero_bidones: Optional[int] = None
 
     #Usado para eliminar espacios en blanco al inicio y final
-    @field_validator("estado")
+    @field_validator("estado","tipo_de_cuenta")
     @classmethod
     def trim_estado(cls, v: Optional[str]) -> Optional[str]:
         return v.strip() if isinstance(v, str) else v
-
-    @field_validator("tipo_de_cuenta")
-    @classmethod
-    def trim_tipo(cls, v: Optional[str]) -> Optional[str]:
-        return v.strip() if isinstance(v, str) else v
+    
     
 class ClienteCuentaCreate(ClienteCuentaBase):
     saldo: Optional[Decimal] = Decimal("0")

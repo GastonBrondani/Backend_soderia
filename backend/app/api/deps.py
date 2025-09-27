@@ -10,3 +10,4 @@ def get_cliente_or_404_dep(legajo: int, db: Session = Depends(get_db)) -> Client
     if not obj:
         raise HTTPException(status_code=404, detail="Cliente no encontrado.")
     return obj
+
