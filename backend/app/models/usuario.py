@@ -23,7 +23,7 @@ class Usuario(Base):
 
     #Campos
     nombre_usuario: Mapped[str] = mapped_column(String(100), nullable=False)
-    contraseña: Mapped[str] = mapped_column(String(255), nullable=False)
+    contrasena: Mapped[str] = mapped_column("contraseña", String(255), nullable=False)
 
     #FKs
     legajo_empleado: Mapped[Optional[int]] = mapped_column(
