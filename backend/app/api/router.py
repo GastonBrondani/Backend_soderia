@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from app.routers import (empresa, persona, cliente,direccionCliente, emailCliente, telefonoCliente, empleado,
                           clienteCuenta, producto, listaPrecios,stock, movimientoStock, recorrido,camionReparto,
-                          repartoDia, usuario, clienteDiaSemana, diaSemana)
+                          repartoDia, usuario, clienteDiaSemana, diaSemana, clienteRepartoDia)
 
 api_router = APIRouter()
 api_router.include_router(empresa.router)
@@ -22,3 +22,4 @@ api_router.include_router(repartoDia.router)
 api_router.include_router(usuario.router)
 api_router.include_router(clienteDiaSemana.router)
 api_router.include_router(diaSemana.router)
+api_router.include_router(clienteRepartoDia.router)

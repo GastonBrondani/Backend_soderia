@@ -62,14 +62,15 @@ def actualizar_reparto_dia(
 def eliminar_reparto_dia(id_repartodia: int, db: Session = Depends(get_db)):
     RepartoDiaService.delete(db, id_repartodia=id_repartodia)
 
-@router.post("/{id_repartodia}/registrar-cobro", response_model=RepartoDiaOut)
-def registrar_cobro(id_repartodia: int, payload: RegistrarCobroIn, db: Session = Depends(get_db)):
-    return RepartoDiaService.registrar_cobro(
-        db,
-        id_repartodia=id_repartodia,
-        efectivo=payload.efectivo,
-        virtual=payload.virtual,
-    )
+#Desabilitado por ahora
+#@router.post("/{id_repartodia}/registrar-cobro", response_model=RepartoDiaOut)
+#def registrar_cobro(id_repartodia: int, payload: RegistrarCobroIn, db: Session = Depends(get_db)):
+#    return RepartoDiaService.registrar_cobro(
+#        db,
+#        id_repartodia=id_repartodia,
+#        efectivo=payload.efectivo,
+#        virtual=payload.virtual,
+#    )
 
 # Opcional:
 @router.post("/{id_repartodia}/cerrar", response_model=RepartoDiaOut)

@@ -186,21 +186,13 @@ class RepartoDiaService:
         return row[0]
 
     @staticmethod
-    def cerrar(
-        db: Session,
-        *,
-        id_repartodia: int,
-        # hooks opcionales: reconciliar vs. detalle, validar diferencias, etc.
-    ) -> RepartoDia:
-        """
-        Operación típica de negocio: 'cerrar' el reparto del día.
-        Acá podrías:
-          - Validar que tenga recorrido asociado
-          - Cuadrar caja (total_recaudado == sum(detalle cobros))
-          - Marcar un estado (si decides agregar un campo 'estado')
-        """
-        entity = RepartoDiaService.get(db, id_repartodia)
+    def cerrar(db: Session,*,id_repartodia: int,) -> RepartoDia:
+        e = RepartoDiaService.get(db, id_repartodia)
 
-        # Ejemplo: simplemente devolvemos la entidad por ahora.
-        # Si luego agregás `estado`, acá lo seteás a 'CERRADO'.
-        return entity
+        e.total_efectivo = (e.total_efectivo or Decimal("0.00"))
+        e.total_virtual  = (e.total_virtual  or Decimal("0.00"))
+        # total_recaudado = suma de buckets que ya tenés
+        e.total_recaudado = e.total_efectivo + e.total_virtual
+        db.commit()
+        db.refresh(e)
+        return e
