@@ -19,8 +19,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.drop_column("empleado", "id_usuario",schema="soderia")
+    # En lugar de op.drop_column(...):
+    op.execute('ALTER TABLE "soderia"."empleado" DROP COLUMN IF EXISTS "id_usuario";')
 
 
 def downgrade() -> None:
-    op.add_column("empleado",sa.Column('id_usuario', sa.Integer(), nullable=True),schema="soderia")
+    # Si el downgrade la vuelve a crear, dejalo como estaba o hacelo idempotente:
+    op.execute('ALTER TABLE "soderia"."empleado" ADD COLUMN IF NOT EXISTS "id_usuario" integer;')
+    # (ajustá el tipo y constraints al que tenía originalmente, si aplica)
