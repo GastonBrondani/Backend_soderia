@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel,field_validator
+from pydantic import BaseModel,field_validator,ConfigDict
 from typing_extensions import Literal
 
 tipoDomicilio = Literal["CASA","TRABAJO","OTRO"]
@@ -47,8 +47,8 @@ class DireccionClienteUpdate(BaseModel):
         return v or None
 
 class DireccionClienteOut(DireccionClienteBase):
+    model_config = ConfigDict(from_attributes=True)
     id_direccion: int
     legajo: int
 
-class Config:
-    from_attributes = True
+

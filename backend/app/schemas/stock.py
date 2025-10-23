@@ -18,6 +18,6 @@ class StockUpdate(BaseModel):
 
 
 class StockOut(StockBase):
+    model_config = ConfigDict(from_attributes=True)
     id_stock: int
-
-    model_config = ConfigDict(from_attributes=True)  
+      

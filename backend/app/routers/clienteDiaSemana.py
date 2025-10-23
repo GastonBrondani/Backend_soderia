@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from datetime import date
 from sqlalchemy.orm import Session
 from sqlalchemy import select, delete
 from typing import List, Optional
@@ -9,6 +10,8 @@ from app.core.database import get_db
 from app.models.clienteDiaSemana import ClienteDiaSemana
 from app.models.diaSemana import DiaSemana
 from app.models.cliente import Cliente
+from app.models.persona import Persona
+
 
 router = APIRouter(prefix="/clientes", tags=["Cliente - días de visita"])
 
@@ -26,6 +29,73 @@ class ClienteDiaVisitaOut(BaseModel):
     nombre_dia: str
     turno_visita: Optional[str] = None
 
+# ===== Schemas de respuesta =====
+class ClientePorDiaItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    legajo: int
+    dni: Optional[int] = None
+    nombre: Optional[str] = None
+    apellido: Optional[str] = None
+    turno_visita: Optional[str] = None
+
+class ClientesPorDiaOut(BaseModel):
+    fecha: date
+    id_dia: int
+    nombre_dia: str
+    clientes: List[ClientePorDiaItem]
+#Este router maneja los días de visita de los clientes pasandome una fecha te muestro todos los clientes de ese dia.
+@router.get("/agenda/visitas", response_model=ClientesPorDiaOut)
+def listar_clientes_por_fecha(
+    fecha: date = Query(..., description="YYYY-MM-DD"),
+    turno: Optional[str] = Query(None, description="Mañana | Tarde | ..."),    
+    db: Session = Depends(get_db),
+):
+    # Lunes=1 .. Domingo=7 (coincide con tu tabla)
+    id_dia = fecha.isoweekday()
+
+    stmt = (
+        select(
+            Cliente.legajo,
+            Cliente.dni,
+            Persona.nombre,
+            Persona.apellido,
+            ClienteDiaSemana.turno_visita,
+            ClienteDiaSemana.id_dia,
+            DiaSemana.nombre_dia,
+        )
+        .select_from(ClienteDiaSemana)
+        .join(Cliente, Cliente.legajo == ClienteDiaSemana.id_cliente)
+        .outerjoin(Persona, Persona.dni == Cliente.dni)
+        .join(DiaSemana, DiaSemana.id_dia == ClienteDiaSemana.id_dia)
+        .where(ClienteDiaSemana.id_dia == id_dia)
+        .order_by(ClienteDiaSemana.turno_visita, Persona.apellido, Persona.nombre)
+    )
+    
+    if turno:
+        stmt = stmt.where(ClienteDiaSemana.turno_visita.ilike(turno))
+
+    rows = db.execute(stmt).all()
+
+    # nombre del día (si no hay filas, lo saco de la tabla de días)
+    nombre_dia = rows[0].nombre_dia if rows else db.execute(
+        select(DiaSemana.nombre_dia).where(DiaSemana.id_dia == id_dia)
+    ).scalar_one()
+
+    return ClientesPorDiaOut(
+        fecha=fecha,
+        id_dia=id_dia,
+        nombre_dia=nombre_dia,
+        clientes=[
+            ClientePorDiaItem(
+                legajo=r.legajo,
+                dni=r.dni,
+                nombre=r.nombre,
+                apellido=r.apellido,
+                turno_visita=r.turno_visita,
+            )
+            for r in rows
+        ],
+    )
 
 # ---- Helper de validación ----
 def _validar_dias_existen(db: Session, ids: List[int]) -> None:

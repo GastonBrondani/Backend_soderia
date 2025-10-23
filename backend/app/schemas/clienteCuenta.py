@@ -1,6 +1,6 @@
 from decimal import Decimal
 from typing import Optional
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator,ConfigDict
 
 class ClienteCuentaBase(BaseModel):
     saldo: Optional[Decimal] = None
@@ -25,11 +25,11 @@ class ClienteCuentaUpdate(ClienteCuentaBase):
     """Patch/PUT parcial: sólo actualiza lo que envíes."""
 
 class ClienteCuentaOut(ClienteCuentaBase):
+    model_config = ConfigDict(from_attributes=True)
     id_cuenta: int
     legajo: int
     saldo: Optional[Decimal] = Decimal("0")
     deuda: Optional[Decimal] = Decimal("0")
     numero_bidones: Optional[int] = 0
 
-    class Config:
-        from_attributes = True
+    

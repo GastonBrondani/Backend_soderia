@@ -1,6 +1,6 @@
 # app/schemas/recorrido.py
 from typing import Optional, List
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator,ConfigDict
 
 class ItemCantidad(BaseModel):
     id_producto: int
@@ -25,6 +25,6 @@ class RecorridoCreate(RecorridoBase):
     detalle_stock_inicial: List[ItemCantidad]
 
 class RecorridoOut(RecorridoBase):
+    model_config = ConfigDict(from_attributes=True)
     id_recorrido: int    
-    # from_attributes=True si usás ORM mode
-    model_config = {"from_attributes": True}
+    

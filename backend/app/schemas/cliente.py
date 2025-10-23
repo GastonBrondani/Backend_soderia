@@ -24,7 +24,8 @@ class ClienteUpdate(BaseModel):
     persona: Optional[PersonaUpdate] = None
 
 class ClienteOut(ClienteBase):
+    model_config = ConfigDict(from_attributes=True)
     legajo: int
     dni: int
     persona: Optional[PersonaOut] = None
-    model_config = ConfigDict(from_attributes=True)
+    

@@ -29,5 +29,6 @@ class MovimientoCreate(MovimientoStockBase):
     pass
 
 class MovimientoOut(MovimientoStockBase):
-    id_movimiento: int
     model_config = ConfigDict(from_attributes=True)
+    id_movimiento: int
+    

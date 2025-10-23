@@ -1,6 +1,6 @@
 from typing import Optional, List,TYPE_CHECKING
 from datetime import datetime
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator,ConfigDict
 
 if TYPE_CHECKING:
     from app.schemas.listaPrecioProducto import LPPBasicOut  # evitar import circular
@@ -28,22 +28,20 @@ class ListaDePreciosUpdate(ListaDePreciosBase):
 
 
 class ListaDePreciosOut(ListaDePreciosBase):
+    model_config = ConfigDict(from_attributes=True)
     id_lista: int
     fecha_creacion: datetime
 
-    class Config:
-        from_attributes = True
 
 
 # Ref liviano para anidar en otros outputs
 class ListaDePreciosRefOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id_lista: int
     nombre: str
-
-    class Config:
-        from_attributes = True
 
 
 # (Opcional) Lista expandida con sus precios
 class ListaDePreciosWithPreciosOut(ListaDePreciosOut):
+    model_config = ConfigDict(from_attributes=True)
     precios: List["LPPBasicOut"] = []  # ver lista_precio_producto.LPPBasicOut

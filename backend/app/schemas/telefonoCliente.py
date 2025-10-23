@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel,field_validator
+from pydantic import BaseModel,field_validator,ConfigDict
 from typing_extensions import Literal
 
 estadoTelefono = Literal["ACTIVO","INACTIVO"]
@@ -36,9 +36,9 @@ class TelefonoClienteUpdate(BaseModel):
         return v or None
     
 class TelefonoClienteOut(TelefonoClienteBase):
+    model_config = ConfigDict(from_attributes=True)
     id_telefono: int
     legajo: int
 
-class Config:
-    from_attributes = True
+
 

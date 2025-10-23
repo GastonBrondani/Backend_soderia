@@ -7,7 +7,12 @@ from app.models.cliente import Cliente
 from app.models.persona import Persona
 from app.schemas.cliente import ClienteCreate, ClienteOut,ClienteUpdate
 
+from app.services.clienteService import ClienteService
+from app.schemas.clienteDetalle import ClienteDetalleOut
+
 router = APIRouter(prefix="/clientes", tags=["Clientes"])
+
+
 
 @router.post("/", response_model=ClienteOut, status_code=status.HTTP_201_CREATED)
 def CrearCliente(payload: ClienteCreate, db: Session = Depends(get_db)):
@@ -56,7 +61,7 @@ def CrearCliente(payload: ClienteCreate, db: Session = Depends(get_db)):
 def ListarClientes(db: Session = Depends(get_db),):
         return db.query(Cliente).options(selectinload(Cliente.persona)).all()
 
-
+#Trae un solo cliente por legajo y es para hacer request individuales.
 @router.get("/{legajo}", response_model=ClienteOut)
 def BuscarCliente(legajo: int, db: Session = Depends(get_db)):
     cliente = (
@@ -68,6 +73,11 @@ def BuscarCliente(legajo: int, db: Session = Depends(get_db)):
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
     return cliente
+
+#Get masivo que trae todo lo relacionado al cliente mediante el legajo.
+@router.get("/{legajo}/detalle", response_model=ClienteDetalleOut,status_code=status.HTTP_200_OK)
+def ObtenerDetalleCliente(legajo: int, db: Session = Depends(get_db)):
+    return ClienteService.get_detalle_cliente(db, legajo)
 
 
 @router.put("/{legajo}", response_model=ClienteOut)

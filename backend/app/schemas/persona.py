@@ -13,6 +13,7 @@ class PersonaUpdate(BaseModel):
     apellido: Optional[str]
 
 class PersonaOut(PersonaBase):
-    dni: int
     model_config = ConfigDict(from_attributes=True)
+    dni: int
+    
 

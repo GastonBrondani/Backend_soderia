@@ -16,6 +16,7 @@ class CamionRepartoUpdate(BaseModel):
     activo: Optional[bool] = None
 
 class CamionRepartoOut(CamionRepartoBase):
-    pass
+    model_config = ConfigDict(from_attributes=True)
+    
 
  
