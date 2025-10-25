@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from .medioPago import MedioPago
     from .movimientoStock import MovimientoStock
     from .pedidoProducto import PedidoProducto
+    from .repartoDia import RepartoDia
     
 
 from sqlalchemy import Integer, String, Text, Numeric, DateTime, ForeignKey
@@ -38,6 +39,10 @@ class Pedido(Base):
         ForeignKey(f"{SCHEMA}.empresa.id_empresa"),
         nullable=False,
     )
+    id_repartodia: Mapped[Optional[int]] = mapped_column(
+        ForeignKey(f"{SCHEMA}.reparto_dia.id_repartodia"),
+        nullable=False,
+    )
 
     #Campos
     fecha: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)
@@ -64,7 +69,9 @@ class Pedido(Base):
     pedidos_productos: Mapped[List["PedidoProducto"]] = relationship(
         "PedidoProducto", back_populates="pedido", lazy="selectin"
     )
-    
+    reparto_dia: Mapped[Optional["RepartoDia"]] = relationship(
+    "RepartoDia", back_populates="pedidos", lazy="selectin"
+    )
 
     def __repr__(self) -> str:
         return (

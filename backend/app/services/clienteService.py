@@ -8,10 +8,14 @@ from app.schemas.clienteDetalle import ClienteDetalleOut
 
 class ClienteService:
 
+    #Muestro todo lo detallado al cliente.
     @staticmethod
     def get_detalle_cliente(db:Session,legajo:int) ->ClienteDetalleOut:
         stmt = (select(Cliente).options(joinedload(Cliente.persona),
-                                        selectinload(Cliente.direcciones),)
+                                        selectinload(Cliente.direcciones),
+                                        selectinload(Cliente.telefonos),
+                                        selectinload(Cliente.emails),
+                                        selectinload(Cliente.productos))
                                         .where(Cliente.legajo == legajo))
         cliente=db.execute(stmt).scalars().first()
         if not cliente:

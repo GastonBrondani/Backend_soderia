@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from .usuario import Usuario
     from .clienteRepartoDia import ClienteRepartoDia
     from .recorrido import Recorrido
+    from .pedido import Pedido
 
 from sqlalchemy import Integer, Date, Numeric, Text, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -52,6 +53,12 @@ class RepartoDia(Base):
     )
     recorridos: Mapped[List["Recorrido"]] = relationship(
         "Recorrido", back_populates="reparto_dia", lazy="selectin"
+    )
+    pedidos: Mapped[List["Pedido"]] = relationship(
+    "Pedido",
+    back_populates="reparto_dia",
+    passive_deletes=True,
+    lazy="selectin",
     )
 
     def __repr__(self) -> str:
