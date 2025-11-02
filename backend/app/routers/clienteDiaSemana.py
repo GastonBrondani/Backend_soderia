@@ -43,7 +43,7 @@ class ClientesPorDiaOut(BaseModel):
     id_dia: int
     nombre_dia: str
     clientes: List[ClientePorDiaItem]
-#Este router maneja los días de visita de los clientes pasandome una fecha te muestro todos los clientes de ese dia.
+#Este router maneja los días de visita de los clientes pasandome una fecha te muestro todos los clientes de ese dia.(Funciona)
 @router.get("/agenda/visitas", response_model=ClientesPorDiaOut)
 def listar_clientes_por_fecha(
     fecha: date = Query(..., description="YYYY-MM-DD"),
@@ -115,7 +115,7 @@ def _validar_dias_existen(db: Session, ids: List[int]) -> None:
         )
 
 
-
+#Muestra el dia de la semana que visita el cliente (Funciona)
 @router.get("/{legajo}/dias-visita", response_model=List[ClienteDiaVisitaOut])
 def listar_dias_visita_cliente(
     cliente: Cliente = Depends(get_cliente_or_404_dep),
@@ -142,7 +142,7 @@ def listar_dias_visita_cliente(
         for r in rows
     ]
 
-
+#Le asignamos un dia de visita al cliente (Funciona)
 @router.put("/{legajo}/dias-visita", response_model=List[ClienteDiaVisitaOut])
 def upsert_dias_visita_cliente(
     payload: ClienteDiasVisitaUpsert,
@@ -192,7 +192,7 @@ def upsert_dias_visita_cliente(
         for r in rows
     ]
 
-
+#Elimina un dia de visita del cliente (Funciona)
 @router.delete("/{legajo}/dias-visita/{id_dia}", status_code=204)
 def eliminar_dia_visita_cliente(
     id_dia: int,

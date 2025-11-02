@@ -15,7 +15,8 @@ class ClienteService:
                                         selectinload(Cliente.direcciones),
                                         selectinload(Cliente.telefonos),
                                         selectinload(Cliente.emails),
-                                        selectinload(Cliente.productos))
+                                        selectinload(Cliente.productos),
+                                        selectinload(Cliente.cuentas))
                                         .where(Cliente.legajo == legajo))
         cliente=db.execute(stmt).scalars().first()
         if not cliente:

@@ -12,6 +12,8 @@ from app.services.repartoDiaService import RepartoDiaService
 router = APIRouter(prefix="/repartos-dia", tags=["Reparto Día"])
 
 @router.post("/", response_model=RepartoDiaOut, status_code=status.HTTP_201_CREATED)
+
+# Crear un nuevo reparto del día(Funciona)
 def crear_reparto_dia(payload: RepartoDiaCreate, db: Session = Depends(get_db)):
     return RepartoDiaService.create(
         db,
@@ -21,10 +23,12 @@ def crear_reparto_dia(payload: RepartoDiaCreate, db: Session = Depends(get_db)):
         observacion=payload.observacion,
     )
 
+#Obtener un reparto del día especifico por su id (Funciona)
 @router.get("/{id_repartodia}", response_model=RepartoDiaOut)
 def obtener_reparto_dia(id_repartodia: int, db: Session = Depends(get_db)):
     return RepartoDiaService.get(db, id_repartodia)
 
+#Listamos todos los repartos del dia con filtros opcionales, como por ejemplo ponerle un fecha desde y hasta.(Funciona)
 @router.get("/", response_model=List[RepartoDiaOut])
 def listar_repartos_dia(
     db: Session = Depends(get_db),
@@ -44,24 +48,25 @@ def listar_repartos_dia(
         limit=limit,
         offset=offset,
     )
+#--------------------------------------------
+#Desabilitado por ahora el actulizar reparto del dia y eliminar
+#@router.put("/{id_repartodia}", response_model=RepartoDiaOut)
+#def actualizar_reparto_dia(
+#    id_repartodia: int, payload: RepartoDiaUpdate, db: Session = Depends(get_db)
+#):
+#    return RepartoDiaService.update(
+#        db,
+#        id_repartodia=id_repartodia,
+#        id_usuario=payload.id_usuario,
+#        id_empresa=payload.id_empresa,
+#        fecha=payload.fecha,
+#        observacion=payload.observacion,
+#    )
 
-@router.put("/{id_repartodia}", response_model=RepartoDiaOut)
-def actualizar_reparto_dia(
-    id_repartodia: int, payload: RepartoDiaUpdate, db: Session = Depends(get_db)
-):
-    return RepartoDiaService.update(
-        db,
-        id_repartodia=id_repartodia,
-        id_usuario=payload.id_usuario,
-        id_empresa=payload.id_empresa,
-        fecha=payload.fecha,
-        observacion=payload.observacion,
-    )
-
-@router.delete("/{id_repartodia}", status_code=status.HTTP_204_NO_CONTENT)
-def eliminar_reparto_dia(id_repartodia: int, db: Session = Depends(get_db)):
-    RepartoDiaService.delete(db, id_repartodia=id_repartodia)
-
+#@router.delete("/{id_repartodia}", status_code=status.HTTP_204_NO_CONTENT)
+#def eliminar_reparto_dia(id_repartodia: int, db: Session = Depends(get_db)):
+#    RepartoDiaService.delete(db, id_repartodia=id_repartodia)
+#---------
 #Desabilitado por ahora
 #@router.post("/{id_repartodia}/registrar-cobro", response_model=RepartoDiaOut)
 #def registrar_cobro(id_repartodia: int, payload: RegistrarCobroIn, db: Session = Depends(get_db)):
@@ -71,8 +76,3 @@ def eliminar_reparto_dia(id_repartodia: int, db: Session = Depends(get_db)):
 #        efectivo=payload.efectivo,
 #        virtual=payload.virtual,
 #    )
-
-# Opcional:
-@router.post("/{id_repartodia}/cerrar", response_model=RepartoDiaOut)
-def cerrar_reparto(id_repartodia: int, db: Session = Depends(get_db)):
-    return RepartoDiaService.cerrar(db, id_repartodia=id_repartodia)

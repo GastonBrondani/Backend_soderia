@@ -8,6 +8,7 @@ from app.schemas.telefonoCliente import TelefonoClienteOut
 from app.schemas.emailCliente import MailClienteOut
 #from app.schemas.documentos import DocumentosOut
 from app.schemas.producto import ProductoOut
+from app.schemas.clienteCuenta import ClienteCuentaOut
 
 
 
@@ -20,3 +21,4 @@ class ClienteDetalleOut(BaseModel):
     emails: List[MailClienteOut] = Field(default_factory=list)
     #documentos: List[DocumentosOut] = Field(default_factory=list)
     productos: List[ProductoOut] = Field(default_factory=list)
+    cuentas: List[ClienteCuentaOut] = Field(default_factory=list)
