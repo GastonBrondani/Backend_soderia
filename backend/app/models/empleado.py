@@ -12,12 +12,12 @@ from sqlalchemy import Integer, BigInteger, Date,ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class Empleado(Base):
     __tablename__ = "empleado"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
     #PK
     legajo: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -25,12 +25,12 @@ class Empleado(Base):
     #Fk
     dni: Mapped[int] = mapped_column(
         BigInteger,
-        ForeignKey(f"{SCHEMA}.persona.dni"),
+        ForeignKey("persona.dni"),
         nullable=False,                                  
     )
     id_empresa: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey(f"{SCHEMA}.empresa.id_empresa"),  
+        ForeignKey("empresa.id_empresa"),  
         nullable=False,
         index=True,
     )

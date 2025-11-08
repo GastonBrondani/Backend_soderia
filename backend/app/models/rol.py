@@ -8,12 +8,12 @@ from sqlalchemy import Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class Rol(Base):
     __tablename__ = "rol"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
     #PK
     id_rol: Mapped[int] = mapped_column(Integer, primary_key=True)

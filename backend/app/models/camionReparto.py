@@ -10,19 +10,19 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class CamionReparto(Base):
     __tablename__ = "camion_reparto"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
     #PK
     patente: Mapped[str] = mapped_column(String(20), primary_key=True)
 
     #FK
     id_empresa: Mapped[int] = mapped_column(
-        ForeignKey(f"{SCHEMA}.empresa.id_empresa"),
+        ForeignKey("empresa.id_empresa"),
         nullable=False,
     )
 

@@ -10,23 +10,23 @@ from sqlalchemy import Integer, Text, DateTime, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class Historico(Base):
     __tablename__ = "historico"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
     #PK
     id_historico: Mapped[int] = mapped_column(Integer, primary_key=True)
 
     #FKs
     legajo: Mapped[int] = mapped_column(
-        ForeignKey(f"{SCHEMA}.cliente.legajo"), 
+        ForeignKey("cliente.legajo"), 
         nullable=False,
     )
     id_evento: Mapped[int] = mapped_column(
-        ForeignKey(f"{SCHEMA}.tipo_evento.id_evento"),
+        ForeignKey("tipo_evento.id_evento"),
         nullable=False,
     )
 

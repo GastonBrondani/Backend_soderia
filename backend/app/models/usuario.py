@@ -11,12 +11,12 @@ from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class Usuario(Base):
     __tablename__ = "usuario"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
     #PK
     id_usuario: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -27,10 +27,10 @@ class Usuario(Base):
 
     #FKs
     legajo_empleado: Mapped[Optional[int]] = mapped_column(
-        ForeignKey(f"{SCHEMA}.empleado.legajo")
+        ForeignKey("empleado.legajo")
     )
     legajo_cliente: Mapped[Optional[int]] = mapped_column(
-        ForeignKey(f"{SCHEMA}.cliente.legajo")
+        ForeignKey("cliente.legajo")
     )
 
     #Relaciones

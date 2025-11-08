@@ -8,12 +8,12 @@ from sqlalchemy import Integer, String, DateTime, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class ListaDePrecios(Base):
     __tablename__ = "lista_de_precios"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
     #PK
     id_lista: Mapped[int] = mapped_column(Integer, primary_key=True)

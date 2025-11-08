@@ -15,12 +15,12 @@ from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class Empresa(Base):
     __tablename__ = "empresa"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
     #PK
     id_empresa: Mapped[int] = mapped_column(Integer, primary_key=True)

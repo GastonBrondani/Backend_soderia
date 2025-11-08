@@ -22,28 +22,28 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
-SCHEMA = "soderia"
+##SCHEMA = "soderia"
 
 
 class CajaEmpresa(Base):
     
     __tablename__ = "caja_empresa"
-    __table_args__ = ({"schema": SCHEMA},)
+    ##__table_args__ = ({"schema": SCHEMA},)
 
     #PK 
     id_movimiento: Mapped[int] = mapped_column(Integer, primary_key=True)
 
     #FKs 
     id_empresa: Mapped[int] = mapped_column(
-        ForeignKey(f"{SCHEMA}.empresa.id_empresa"),
+        ForeignKey("empresa.id_empresa"),
         nullable=False,
     )
     id_tipo_movimiento: Mapped[int] = mapped_column(
-        ForeignKey(f"{SCHEMA}.tipo_movimiento_caja.id_tipo_movimiento"),
+        ForeignKey("tipo_movimiento_caja.id_tipo_movimiento"),
         nullable=False,
     )
     id_medio_pago: Mapped[int] = mapped_column(
-        ForeignKey(f"{SCHEMA}.medio_pago.id_medio_pago"),
+        ForeignKey("medio_pago.id_medio_pago"),
         nullable=False,
     )
 

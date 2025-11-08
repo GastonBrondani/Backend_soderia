@@ -12,26 +12,26 @@ from sqlalchemy import Integer, String, Numeric, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class Recorrido(Base):
     __tablename__ = "recorrido"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
     #PK
     id_recorrido: Mapped[int] = mapped_column(Integer, primary_key=True)
 
     #FKs
     id_empleado: Mapped[int] = mapped_column(
-        ForeignKey(f"{SCHEMA}.empleado.legajo"), nullable=False
+        ForeignKey("empleado.legajo"), nullable=False
     )
     id_repartodia: Mapped[int] = mapped_column(     
-        ForeignKey(f"{SCHEMA}.reparto_dia.id_repartodia"), nullable=False
+        ForeignKey("reparto_dia.id_repartodia"), nullable=False
     )
     id_camion: Mapped[str] = mapped_column(         
         String(20),
-        ForeignKey(f"{SCHEMA}.camion_reparto.patente"),
+        ForeignKey("camion_reparto.patente"),
         nullable=False,
     )
 

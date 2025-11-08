@@ -10,21 +10,21 @@ from sqlalchemy import Integer, Numeric, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class PedidoProducto(Base):
     __tablename__ = "pedido_producto"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
     #PKs
     id_pedido: Mapped[int] = mapped_column(
-        ForeignKey(f"{SCHEMA}.pedido.id_pedido"),
+        ForeignKey("pedido.id_pedido"),
         primary_key=True,
         nullable=False,
     )
     id_producto: Mapped[int] = mapped_column(
-        ForeignKey(f"{SCHEMA}.producto.id_producto"),
+        ForeignKey("producto.id_producto"),
         primary_key=True,
         nullable=False,
     )

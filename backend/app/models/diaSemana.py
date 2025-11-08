@@ -8,12 +8,12 @@ from sqlalchemy import SmallInteger, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class DiaSemana(Base):
     __tablename__ = "dia_semana"
-    __table_args__ = {"schema": SCHEMA}
+    #__table_args__ = {"schema": SCHEMA}
 
     #PK
     id_dia: Mapped[int] = mapped_column(SmallInteger, primary_key=True)

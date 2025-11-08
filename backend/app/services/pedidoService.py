@@ -6,9 +6,12 @@ from fastapi import HTTPException
 from datetime import date
 
 from app.models.pedido import Pedido
-from app.models.clienteCuenta import ClienteCuenta   # ajustá el import a tu ruta real
+from app.models.clienteCuenta import ClienteCuenta
 from app.models.medioPago import MedioPago
 from app.models.repartoDia import RepartoDia
+#from app.models.pedidoProducto import PedidoProducto
+#from app.models.listaPrecioProducto import ListaPrecioProducto
+
 from app.schemas.pedido import PedidoOut, PedidoCreate, PedidoConfirmarIn
 
 from app.services.clienteRepartoDiaService import ClienteRepartoDiaService
@@ -78,8 +81,8 @@ class PedidoService:
         except SQLAlchemyError:
             db.rollback()
             raise HTTPException(status_code=500, detail="Error interno al crear el pedido.")
-        
-    
+
+
     @staticmethod
     def confirmar_pedido(db: Session, id_pedido: int, data: PedidoConfirmarIn) -> PedidoOut:
         with db.begin():

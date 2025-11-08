@@ -9,23 +9,23 @@ from sqlalchemy import Integer, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class Stock(Base):
     __tablename__ = "stock"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
     #PK
     id_stock: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     #FKs
     id_producto: Mapped[int] = mapped_column(
-        ForeignKey(f"{SCHEMA}.producto.id_producto"),
+        ForeignKey("producto.id_producto"),
         nullable=False,
     )
     id_empresa: Mapped[int] = mapped_column(
-        ForeignKey(f"{SCHEMA}.empresa.id_empresa"),
+        ForeignKey("empresa.id_empresa"),
         nullable=False,
     )
 

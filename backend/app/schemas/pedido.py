@@ -35,11 +35,9 @@ class PedidoCreate(PedidoBase):
     fecha: datetime  # obligatorio
     monto_total: Decimal  # obligatorio
 
-
 class PedidoOut(PedidoBase):
     model_config = ConfigDict(from_attributes=True)
     id_pedido: int
-
 
 class PedidoConfirmarIn(BaseModel):
     id_repartodia: int

@@ -9,21 +9,21 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class UsuarioRol(Base):
     __tablename__ = "usuario_rol"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
     #PKs
     id_usuario: Mapped[int] = mapped_column(
-        ForeignKey(f"{SCHEMA}.usuario.id_usuario"),
+        ForeignKey("usuario.id_usuario"),
         primary_key=True,
         nullable=False,
     )
     id_rol: Mapped[int] = mapped_column(
-        ForeignKey(f"{SCHEMA}.rol.id_rol"),
+        ForeignKey("rol.id_rol"),
         primary_key=True,
         nullable=False,
     )

@@ -9,12 +9,12 @@ from sqlalchemy import String, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class Persona(Base):
     __tablename__ = "persona"
-    __table_args__ = {"schema": SCHEMA}
+    #__table_args__ = {"schema": SCHEMA}
 
     #PK
     dni: Mapped[int] = mapped_column(BigInteger, primary_key=True)

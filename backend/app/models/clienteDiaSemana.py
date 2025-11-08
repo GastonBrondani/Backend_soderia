@@ -10,23 +10,23 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class ClienteDiaSemana(Base):
     __tablename__ = "cliente_dia_semana"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
     #PK
     id_cliente: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey(f"{SCHEMA}.cliente.legajo"),
+        ForeignKey("cliente.legajo"),
         primary_key=True,
         nullable=False,
     )
     id_dia: Mapped[int] = mapped_column(
         SmallInteger,
-        ForeignKey(f"{SCHEMA}.dia_semana.id_dia"),
+        ForeignKey("dia_semana.id_dia"),
         primary_key=True,
         nullable=False,
     )

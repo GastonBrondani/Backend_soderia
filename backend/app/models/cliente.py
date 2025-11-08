@@ -21,24 +21,24 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class Cliente(Base):
     __tablename__ = "cliente"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
     #PK
     legajo: Mapped[int] = mapped_column(Integer, primary_key=True)
 
     #FKs
     id_empresa: Mapped[int] = mapped_column(
-        ForeignKey(f"{SCHEMA}.empresa.id_empresa"),
+        ForeignKey("empresa.id_empresa"),
         nullable=False,
     )
     dni: Mapped[int] = mapped_column(            
         BigInteger,
-        ForeignKey(f"{SCHEMA}.persona.dni",ondelete="CASCADE"),
+        ForeignKey("persona.dni",ondelete="CASCADE"),
         nullable=False,
     )
 

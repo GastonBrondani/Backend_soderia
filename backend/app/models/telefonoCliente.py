@@ -8,19 +8,19 @@ from sqlalchemy import Integer, String, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class TelefonoCliente(Base):
     __tablename__ = "telefono_cliente"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
     #PK
     id_telefono: Mapped[int] = mapped_column(Integer, primary_key=True)
 
     #FK
     legajo: Mapped[int] = mapped_column(
-        ForeignKey(f"{SCHEMA}.cliente.legajo"),
+        ForeignKey("cliente.legajo"),
         nullable=False,
     )
 
