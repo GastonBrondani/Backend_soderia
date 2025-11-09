@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import Optional, List
-from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.persona import PersonaCreate, PersonaOut, PersonaUpdate
@@ -9,27 +8,11 @@ from app.schemas.telefonoCliente import TelefonoClienteOut
 from app.schemas.emailCliente import MailClienteOut
 from app.schemas.producto import ProductoOut
 from app.schemas.clienteCuenta import ClienteCuentaOut
+from app.schemas.clienteDiaSemana import FrecuenciaItemIn, ClienteDiaSemanaOut
+from app.schemas.enums_cliente import DiaSemanaEnum, TurnoVisitaEnum
 
-# -----------------------------
-# Enums
-# -----------------------------
-class DiaSemanaEnum(StrEnum):
-    lun = "lun"
-    mar = "mar"
-    mie = "mie"
-    jue = "jue"
-    vie = "vie"
-    sab = "sab"
-    dom = "dom"
 
-class TurnoVisitaEnum(StrEnum):
-    manana = "manana"   # sin acento para JSON
-    tarde = "tarde"
-    noche = "noche"
 
-# -----------------------------
-# Sub-esquemas (Create)
-# -----------------------------
 class DireccionClienteCreate(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     direccion: str
@@ -77,6 +60,7 @@ class ClienteCreate(ClienteBase):
     # 👇 ahora sí: días + (opcional) turno común
     dias_visita: List[DiaSemanaEnum] = Field(default_factory=list)
     turno_visita: Optional[TurnoVisitaEnum] = None
+    frecuencias: Optional[List[FrecuenciaItemIn]] = None
 
     @model_validator(mode="after")
     def _check_persona_or_dni(self):
@@ -97,6 +81,7 @@ class ClienteOut(ClienteBase):
     legajo: int
     dni: int
     persona: Optional[PersonaOut] = None
+    dias_semanas: List[ClienteDiaSemanaOut] = Field(default_factory=list)
 
 class ClienteDetalleOut(ClienteOut):
     direcciones: List[DireccionClienteOut] = Field(default_factory=list)

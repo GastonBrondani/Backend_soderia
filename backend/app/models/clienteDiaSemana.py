@@ -34,6 +34,8 @@ class ClienteDiaSemana(Base):
     #Campos
     turno_visita: Mapped[str | None] = mapped_column(String(20))
 
+    orden: Mapped[int | None] = mapped_column(SmallInteger)
+
     #Relaciones
     cliente: Mapped["Cliente"] = relationship(
         "Cliente",back_populates="dias_semanas",lazy="selectin"

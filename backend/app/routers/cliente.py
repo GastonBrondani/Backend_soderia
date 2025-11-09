@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from typing import List, Dict
+from typing import List, Dict, Optional
+from sqlalchemy import update, func
 from sqlalchemy.orm import Session,selectinload
 from sqlalchemy import and_
 from app.core.database import get_db
@@ -16,7 +17,88 @@ from app.schemas.cliente import ClienteCreate, ClienteOut,ClienteUpdate,DiaSeman
 from app.services.clienteService import ClienteService
 from app.schemas.clienteDetalle import ClienteDetalleOut
 
+#--------------------- pasarlo a logica de servicio ---------------------
+
+
 router = APIRouter(prefix="/clientes", tags=["Clientes"])
+
+def _idx_dias(db: Session) -> Dict[str, int]:
+    """Devuelve {'lun': id_dia, ...} en base a tabla dia_semana."""
+    dias_db = db.execute(select(DiaSemana)).scalars().all()
+    idx: Dict[str, int] = {}
+    for d in dias_db:
+        nombre = (d.nombre_dia or "").strip().lower()
+        if nombre.startswith("lu"):
+            idx["lun"] = d.id_dia
+        elif nombre.startswith("ma") and "r" in nombre:
+            idx["mar"] = d.id_dia
+        elif nombre.startswith("mi"):
+            idx["mie"] = d.id_dia
+        elif nombre.startswith("ju"):
+            idx["jue"] = d.id_dia
+        elif nombre.startswith("vi"):
+            idx["vie"] = d.id_dia
+        elif nombre.startswith("sa"):
+            idx["sab"] = d.id_dia
+        elif nombre.startswith("do"):
+            idx["dom"] = d.id_dia
+    return idx
+
+
+def _calcular_orden_y_correr(
+    db: Session,
+    id_dia: int,
+    turno_val: Optional[str],       # "manana"|"tarde"|"noche"|None
+    posicion: str,                  # "inicio"|"final"|"despues"
+    despues_de_legajo: Optional[int] = None,
+) -> int:
+    """
+    Devuelve el orden a asignar al nuevo registro y corre los existentes de ser necesario.
+    Bloquea el conjunto (día/turno) para evitar carreras.
+    """
+    # Filtro base por día y turno (permitiendo NULL)
+    filtro_base = and_(
+        ClienteDiaSemana.id_dia == id_dia,
+        ClienteDiaSemana.turno_visita.is_(None) if turno_val is None else ClienteDiaSemana.turno_visita == turno_val,
+    )
+
+    # Lock del set afectado
+    db.execute(select(ClienteDiaSemana.id_cliente).where(filtro_base).with_for_update())
+
+    if posicion == "inicio":
+        # Todos +1, nuevo en 1
+        db.execute(
+            update(ClienteDiaSemana)
+            .where(filtro_base)
+            .values(orden=func.coalesce(ClienteDiaSemana.orden, 0) + 1)
+        )
+        return 1
+
+    if posicion == "final":
+        max_orden = db.execute(
+            select(func.coalesce(func.max(ClienteDiaSemana.orden), 0)).where(filtro_base)
+        ).scalar_one()
+        return max_orden + 1
+
+    # posicion == "despues"
+    if not despues_de_legajo:
+        raise HTTPException(status_code=400, detail="Falta 'despues_de_legajo' para posicion='despues'.")
+
+    ref_orden = db.execute(
+        select(ClienteDiaSemana.orden).where(
+            and_(filtro_base, ClienteDiaSemana.id_cliente == despues_de_legajo)
+        )
+    ).scalar_one_or_none()
+
+    if ref_orden is None:
+        raise HTTPException(status_code=404, detail="Cliente de referencia no existe en ese día/turno.")
+
+    db.execute(
+        update(ClienteDiaSemana)
+        .where(and_(filtro_base, ClienteDiaSemana.orden > ref_orden))
+        .values(orden=ClienteDiaSemana.orden + 1)
+    )
+    return ref_orden + 1
 
 
 @router.post("/", response_model=ClienteDetalleOut, status_code=status.HTTP_201_CREATED)
@@ -33,96 +115,97 @@ def CrearCliente(payload: ClienteCreate, db: Session = Depends(get_db)):
                 db.flush()
         else:
             if not persona:
-                raise HTTPException(404, "La persona (dni) no existe. Enviá 'persona' para crearla.")
+                raise HTTPException(status_code=404, detail="La persona (dni) no existe. Enviá 'persona' para crearla.")
 
         # 2) Duplicado por empresa
         existe = db.query(Cliente).filter(and_(Cliente.dni == dni_final, Cliente.id_empresa == 1)).first()
         if existe:
-            raise HTTPException(409, "Ya existe un cliente para ese DNI en esta empresa.")
+            raise HTTPException(status_code=409, detail="Ya existe un cliente para ese DNI en esta empresa.")
 
         # 3) Crear cliente
         nuevo = Cliente(id_empresa=1, observacion=payload.observacion)
         nuevo.persona = persona
         db.add(nuevo)
-        db.flush()  # tiene legajo
+        db.flush()  # genera legajo
 
-        # 4) Hijos anidados (con mapeos de nombres)
+        # 4) Hijos anidados
         if payload.direcciones:
-            direcciones = []
-            for d in payload.direcciones:
-                direcciones.append(DireccionCliente(
+            db.add_all([
+                DireccionCliente(
                     legajo=nuevo.legajo,
                     direccion=d.direccion,
-                    entre_calle1=d.entre_calle1,  # map
-                    entre_calle2=d.entre_calle2,       # map
-                    zona=d.zona            # map
-                ))
-            db.add_all(direcciones)
+                    entre_calle1=d.entre_calle1,
+                    entre_calle2=d.entre_calle2,
+                    zona=d.zona,
+                )
+                for d in payload.direcciones
+            ])
 
         if payload.telefonos:
-            telefonos = []
-            for t in payload.telefonos:
-                telefonos.append(TelefonoCliente(
-                    legajo=nuevo.legajo,
-                    nro_telefono=t.nro_telefono  # map
-                ))
-            db.add_all(telefonos)
+            db.add_all([
+                TelefonoCliente(legajo=nuevo.legajo, nro_telefono=t.nro_telefono)
+                for t in payload.telefonos
+            ])
 
         if payload.emails:
-            emails = []
-            for e in payload.emails:
-                emails.append(MailCliente(
-                    legajo=nuevo.legajo,
-                    mail=e.mail
-                ))
-            db.add_all(emails)
+            db.add_all([
+                MailCliente(legajo=nuevo.legajo, mail=e.mail)
+                for e in payload.emails
+            ])
 
-        # 5) Días + turno → cliente_dia_semana
-        if payload.dias_visita:
-            # Traigo todos los días (id_dia, nombre_dia) y armo índice por "lun/mar/..."
-            dias_db = db.execute(select(DiaSemana)).scalars().all()
-            idx: Dict[str, int] = {}
-            for d in dias_db:
-                nombre = (d.nombre_dia or "").strip().lower()
-                # normalizo a las 3 letras esperadas por el enum
-                if nombre.startswith("lu"): idx["lun"] = d.id_dia
-                elif nombre.startswith("ma") and "r" in nombre: idx["mar"] = d.id_dia
-                elif nombre.startswith("mi"): idx["mie"] = d.id_dia
-                elif nombre.startswith("ju"): idx["jue"] = d.id_dia
-                elif nombre.startswith("vi"): idx["vie"] = d.id_dia
-                elif nombre.startswith("sa"): idx["sab"] = d.id_dia
-                elif nombre.startswith("do"): idx["dom"] = d.id_dia
+        # 5) Días + turno → cliente_dia_semana (con ORDEN)
+        registros: List[ClienteDiaSemana] = []
+        idx = _idx_dias(db)
 
-            dias_unicos: List[DiaSemanaEnum] = list(dict.fromkeys(payload.dias_visita))
-            faltantes: List[str] = []
-            registros: List[ClienteDiaSemana] = []
-
-            turno_val = (
-                payload.turno_visita.value
-                if isinstance(payload.turno_visita, TurnoVisitaEnum)
-                else payload.turno_visita
-            )
-
-            for dia in dias_unicos:
-                id_dia = idx.get(dia.value)  # "lun".."dom"
+        if payload.frecuencias and len(payload.frecuencias) > 0:
+            # Versión rica por día
+            for f in payload.frecuencias:
+                id_dia = idx.get(f.dia.value)
                 if not id_dia:
-                    faltantes.append(dia.value)
-                    continue
+                    raise HTTPException(status_code=400, detail=f"Día no encontrado: {f.dia.value}")
+
+                turno_val = f.turno.value if hasattr(f.turno, "value") else f.turno
+                posicion_val = f.posicion.value if hasattr(f.posicion, "value") else str(f.posicion)
+
+                orden_nuevo = _calcular_orden_y_correr(
+                    db=db,
+                    id_dia=id_dia,
+                    turno_val=turno_val,
+                    posicion=posicion_val,
+                    despues_de_legajo=f.despues_de_legajo,
+                )
+
                 registros.append(ClienteDiaSemana(
                     id_cliente=nuevo.legajo,
                     id_dia=id_dia,
-                    turno_visita=turno_val  # puede ser None, queda NULL
+                    turno_visita=turno_val,
+                    orden=orden_nuevo,
+                ))
+        elif payload.dias_visita:
+            # Compatibilidad: solo 'dias_visita' (+ opcional turno_visita) -> agrega al final
+            turno_val = payload.turno_visita.value if hasattr(payload.turno_visita, "value") else payload.turno_visita
+            for dia in dict.fromkeys(payload.dias_visita):  # únicos, en orden
+                id_dia = idx.get(dia.value)
+                if not id_dia:
+                    raise HTTPException(status_code=400, detail=f"Día no encontrado: {dia.value}")
+
+                orden_nuevo = _calcular_orden_y_correr(
+                    db=db,
+                    id_dia=id_dia,
+                    turno_val=turno_val,
+                    posicion="final",
+                )
+                registros.append(ClienteDiaSemana(
+                    id_cliente=nuevo.legajo,
+                    id_dia=id_dia,
+                    turno_visita=turno_val,
+                    orden=orden_nuevo,
                 ))
 
-            if faltantes:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Días no encontrados en 'dia_semana': {faltantes}"
-                )
+        if registros:
+            db.add_all(registros)
 
-            if registros:
-                db.add_all(registros)
-
+        # 6) Commit y retorno
         db.commit()
         return ClienteService.get_detalle_cliente(db, nuevo.legajo)
 
@@ -131,29 +214,21 @@ def CrearCliente(payload: ClienteCreate, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error creando cliente: {e}")
-    
-@router.get("/", response_model=List[ClienteOut])
-def ListarClientes(db: Session = Depends(get_db),):
-        return db.query(Cliente).options(selectinload(Cliente.persona)).all()
-
-#Trae un solo cliente por legajo y es para hacer request individuales.
-@router.get("/{legajo}", response_model=ClienteOut)
-def BuscarCliente(legajo: int, db: Session = Depends(get_db)):
-    cliente = (
-        db.query(Cliente)
-        .options(selectinload(Cliente.persona))
-        .filter(Cliente.legajo == legajo)
-        .first()
-    )
-    if not cliente:
-        raise HTTPException(status_code=404, detail="Cliente no encontrado")
-    return cliente
 
 #Get masivo que trae todo lo relacionado al cliente mediante el legajo.
 @router.get("/{legajo}/detalle", response_model=ClienteDetalleOut,status_code=status.HTTP_200_OK)
 def ObtenerDetalleCliente(legajo: int, db: Session = Depends(get_db)):
     return ClienteService.get_detalle_cliente(db, legajo)
 
+@router.get("/", response_model=List[ClienteOut], status_code=status.HTTP_200_OK)
+def ListarClientes(db: Session = Depends(get_db)):
+    clientes = (
+        db.query(Cliente)
+          .options(selectinload(Cliente.persona))
+          .filter(Cliente.id_empresa == 1)
+          .all()
+    )
+    return clientes
 
 @router.put("/{legajo}", response_model=ClienteOut)
 def ActualizarCliente(legajo: int, payload: ClienteUpdate, db: Session = Depends(get_db)):
