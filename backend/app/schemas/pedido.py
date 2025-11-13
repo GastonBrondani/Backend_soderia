@@ -3,6 +3,7 @@ from pydantic import BaseModel, field_validator, ConfigDict,Field
 from enum import StrEnum
 from datetime import datetime
 from decimal import Decimal
+from typing import Optional
 
 class EstadoPedido(StrEnum):
     borrador = "borrador"
@@ -41,3 +42,16 @@ class PedidoOut(PedidoBase):
 
 class PedidoConfirmarIn(BaseModel):
     id_repartodia: int
+
+
+
+
+
+#EMMA
+class PedidoOutCorto(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_pedido: int
+    fecha: datetime
+    estado: Optional[str] = None
+    total: Optional[Decimal] = None

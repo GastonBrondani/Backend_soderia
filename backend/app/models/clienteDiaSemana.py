@@ -33,6 +33,7 @@ class ClienteDiaSemana(Base):
 
     #Campos
     turno_visita: Mapped[str | None] = mapped_column(String(20))
+    orden: Mapped[int | None] = mapped_column(SmallInteger)
 
     #Relaciones
     cliente: Mapped["Cliente"] = relationship(
@@ -44,3 +45,5 @@ class ClienteDiaSemana(Base):
 
     def __repr__(self) -> str:
         return f"<ClienteDiaSemana cliente={self.id_cliente} dia={self.id_dia} turno={self.turno_visita}>"
+
+
