@@ -12,10 +12,10 @@ from app.models.emailCliente import MailCliente
 from app.models.clienteDiaSemana import ClienteDiaSemana
 from app.models.diaSemana import DiaSemana
 from sqlalchemy import select
-from app.schemas.cliente import ClienteCreate, ClienteOut,ClienteUpdate,DiaSemanaEnum,TurnoVisitaEnum
+from app.schemas.cliente import ClienteCreate, ClienteOut
 
 from app.services.clienteService import ClienteService
-from app.schemas.clienteDetalle import ClienteDetalleOut
+from app.schemas.clienteDetalle import ClienteDetalleOut, ClienteDetalleUpdate
 
 #--------------------- pasarlo a logica de servicio ---------------------
 
@@ -230,7 +230,8 @@ def ListarClientes(db: Session = Depends(get_db)):
     )
     return clientes
 
-@router.put("/{legajo}", response_model=ClienteOut)
+#Viejo put
+""" @router.put("/{legajo}", response_model=ClienteOut)
 def ActualizarCliente(legajo: int, payload: ClienteUpdate, db: Session = Depends(get_db)):
     try:
         cliente = db.get(Cliente, legajo)
@@ -271,8 +272,16 @@ def ActualizarCliente(legajo: int, payload: ClienteUpdate, db: Session = Depends
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error actualizando cliente: {e}")
+        raise HTTPException(status_code=500, detail=f"Error actualizando cliente: {e}") """
 
+#Nuevo put que actualiza todo lo relacionado al cliente.
+@router.put("/{legajo}/detalle", response_model=ClienteDetalleOut)
+def update_cliente_detalle(
+    legajo: int,
+    payload: ClienteDetalleUpdate,
+    db: Session = Depends(get_db),
+):
+    return ClienteService.update_detalle_cliente(db, legajo, payload)
 
 
 @router.delete("/{legajo}", status_code=status.HTTP_204_NO_CONTENT)

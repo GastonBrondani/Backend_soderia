@@ -22,7 +22,7 @@ class ClienteCuentaCreate(ClienteCuentaBase):
     numero_bidones: Optional[int] = 0
 
 class ClienteCuentaUpdate(ClienteCuentaBase):
-    """Patch/PUT parcial: sólo actualiza lo que envíes."""
+    id_cuenta: Optional[int] = None
 
 class ClienteCuentaOut(ClienteCuentaBase):
     model_config = ConfigDict(from_attributes=True)

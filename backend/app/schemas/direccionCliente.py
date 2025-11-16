@@ -1,8 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel,field_validator,ConfigDict
-from typing_extensions import Literal
 
-tipoDomicilio = Literal["CASA","TRABAJO","OTRO"]
+
 
 class DireccionClienteBase(BaseModel):
     localidad: Optional[str] = None
@@ -11,7 +10,7 @@ class DireccionClienteBase(BaseModel):
     entre_calle1: Optional[str] = None
     entre_calle2: Optional[str] = None
     observacion: Optional[str] = None
-    tipo: Optional[tipoDomicilio] = "CASA"
+    tipo: Optional[str] = None
     latitud_longitud: Optional[str] = None
 
 
@@ -28,23 +27,8 @@ class DireccionClienteCreate(DireccionClienteBase):
     pass
 
 
-class DireccionClienteUpdate(BaseModel):
-    localidad: Optional[str] = None
-    direccion: Optional[str] = None
-    zona: Optional[str] = None
-    entre_calle1: Optional[str] = None
-    entre_calle2: Optional[str] = None
-    observacion: Optional[str] = None
-    tipo: Optional[tipoDomicilio] = None
-    latitud_longitud: Optional[str] = None
-
-    @field_validator("observacion")
-    @classmethod
-    def trim_obs(cls, v):
-        if v is None:
-            return v
-        v = v.strip()
-        return v or None
+class DireccionClienteUpdate(DireccionClienteBase):    
+    id_direccion: Optional[int] = None
 
 class DireccionClienteOut(DireccionClienteBase):
     model_config = ConfigDict(from_attributes=True)
