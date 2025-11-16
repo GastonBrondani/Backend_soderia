@@ -20,7 +20,7 @@ class ClienteDiaSemana(Base):
     #PK
     id_cliente: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("cliente.legajo"),
+        ForeignKey("cliente.legajo", ondelete="CASCADE"),
         primary_key=True,
         nullable=False,
     )

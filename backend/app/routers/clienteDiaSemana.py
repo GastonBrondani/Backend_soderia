@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from datetime import date, timedelta
+from fastapi import APIRouter, Depends, HTTPException, Query,status
+from datetime import date
 from sqlalchemy.orm import Session
 from sqlalchemy import select, delete
 from typing import List, Optional
@@ -11,6 +11,8 @@ from app.models.clienteDiaSemana import ClienteDiaSemana
 from app.models.diaSemana import DiaSemana
 from app.models.cliente import Cliente
 from app.models.persona import Persona
+
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 
 
@@ -276,3 +278,94 @@ def eliminar_dia_visita_cliente(
         )
     )
     db.commit()
+
+def _validar_dias_existen(db: Session, ids: list[int]) -> None:
+    if not ids:
+        return
+    rows = db.execute(
+        select(DiaSemana.id_dia).where(DiaSemana.id_dia.in_(ids))
+    ).scalars().all()
+    faltantes = set(ids) - set(rows)
+    if faltantes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Días inexistentes: {sorted(faltantes)}",
+        )
+    
+@router.post("/{legajo}/dias-visita",
+             response_model=List[ClienteDiaVisitaOut],
+             status_code=status.HTTP_201_CREATED)
+def agregar_dias_visita_cliente(
+    payload: ClienteDiasVisitaUpsert,
+    cliente: Cliente = Depends(get_cliente_or_404_dep),
+    db: Session = Depends(get_db),
+):
+    # Validaciones
+    ids = [d.id_dia for d in payload.dias]
+    _validar_dias_existen(db, ids)
+
+    # Nada que agregar
+    if not payload.dias:
+        # Devolver estado actual
+        stmt = (
+            select(
+                ClienteDiaSemana.id_dia,
+                DiaSemana.nombre_dia,
+                ClienteDiaSemana.turno_visita,
+            )
+            .join(DiaSemana, DiaSemana.id_dia == ClienteDiaSemana.id_dia)
+            .where(ClienteDiaSemana.id_cliente == cliente.legajo)
+            .order_by(ClienteDiaSemana.id_dia)
+        )
+        rows = db.execute(stmt).all()
+        return [
+            ClienteDiaVisitaOut(
+                id_dia=r.id_dia,
+                nombre_dia=r.nombre_dia,
+                turno_visita=r.turno_visita,
+            )
+            for r in rows
+        ]
+
+    # Insertar nuevos sin borrar existentes
+    valores = [
+        {
+            "id_cliente": cliente.legajo,
+            "id_dia": item.id_dia,
+            "turno_visita": item.turno_visita,
+        }
+        for item in payload.dias
+    ]
+
+    # INSERT ... ON CONFLICT DO NOTHING sobre (id_cliente, id_dia)
+    stmt_insert = (
+        pg_insert(ClienteDiaSemana)
+        .values(valores)
+        .on_conflict_do_nothing(
+            index_elements=["id_cliente", "id_dia"]
+        )
+    )
+    db.execute(stmt_insert)
+    db.commit()
+
+    # Devolver estado actual (mismo SELECT que en tu PUT/GET)
+    stmt = (
+        select(
+            ClienteDiaSemana.id_dia,
+            DiaSemana.nombre_dia,
+            ClienteDiaSemana.turno_visita,
+        )
+        .select_from(ClienteDiaSemana)
+        .join(DiaSemana, DiaSemana.id_dia == ClienteDiaSemana.id_dia)
+        .where(ClienteDiaSemana.id_cliente == cliente.legajo)
+        .order_by(ClienteDiaSemana.id_dia)
+    )
+    rows = db.execute(stmt).all()
+    return [
+        ClienteDiaVisitaOut(
+            id_dia=r.id_dia,
+            nombre_dia=r.nombre_dia,
+            turno_visita=r.turno_visita,
+        )
+        for r in rows
+    ]
