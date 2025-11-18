@@ -20,7 +20,7 @@ class MailCliente(Base):
 
     #FK
     legajo: Mapped[int] = mapped_column(
-        ForeignKey("cliente.legajo"),
+        ForeignKey("cliente.legajo", ondelete="CASCADE"),
         nullable=False,
     )
 

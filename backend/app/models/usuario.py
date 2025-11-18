@@ -30,7 +30,7 @@ class Usuario(Base):
         ForeignKey("empleado.legajo")
     )
     legajo_cliente: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("cliente.legajo")
+        ForeignKey("cliente.legajo", ondelete="CASCADE")
     )
 
     #Relaciones

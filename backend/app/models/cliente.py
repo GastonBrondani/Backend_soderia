@@ -55,37 +55,70 @@ class Cliente(Base):
     )
     
     cuentas: Mapped[List["ClienteCuenta"]] = relationship(
-        "ClienteCuenta", back_populates="cliente", lazy="selectin",passive_deletes=True
+        "ClienteCuenta",
+        back_populates="cliente",
+        lazy="selectin",
+        cascade="all, delete-orphan",
     )
     direcciones: Mapped[List["DireccionCliente"]] = relationship(
-        "DireccionCliente", back_populates="cliente", lazy="selectin",passive_deletes=True
+        "DireccionCliente",
+        back_populates="cliente",
+        lazy="selectin",
+        cascade="all, delete-orphan",
     )
     documentos: Mapped[List["Documentos"]] = relationship(
-        "Documentos", back_populates="cliente", lazy="selectin",passive_deletes=True
+        "Documentos",
+        back_populates="cliente",
+        lazy="selectin",
+        cascade="all, delete-orphan",
     )
     emails: Mapped[List["MailCliente"]] = relationship(
-        "MailCliente", back_populates="cliente", lazy="selectin",passive_deletes=True
+        "MailCliente",
+        back_populates="cliente",
+        lazy="selectin",
+        cascade="all, delete-orphan",
     )
     historicos: Mapped[List["Historico"]] = relationship(
-        "Historico", back_populates="cliente", lazy="selectin",passive_deletes=True
+        "Historico",
+        back_populates="cliente",
+        lazy="selectin",
+        cascade="all, delete-orphan",
     )
     pedidos: Mapped[List["Pedido"]] = relationship(
-        "Pedido", back_populates="cliente", lazy="selectin",passive_deletes=True
+        "Pedido",
+        back_populates="cliente",
+        lazy="selectin",
+        cascade="all, delete-orphan",
     )
     productos: Mapped[List["ProductoCliente"]] = relationship(
-        "ProductoCliente", back_populates="cliente", lazy="selectin",passive_deletes=True
+        "ProductoCliente",
+        back_populates="cliente",
+        lazy="selectin",
+        cascade="all, delete-orphan",
     )
     telefonos: Mapped[List["TelefonoCliente"]] = relationship(
-        "TelefonoCliente", back_populates="cliente", lazy="selectin",passive_deletes=True
+        "TelefonoCliente",
+        back_populates="cliente",
+        lazy="selectin",
+        cascade="all, delete-orphan",
     )
     usuario: Mapped["Usuario"] = relationship(
-        "Usuario",back_populates="cliente",lazy="selectin",passive_deletes=True
+        "Usuario",
+        back_populates="cliente",
+        lazy="selectin",
+        cascade="all, delete-orphan",
     )
     dias_semanas: Mapped[List["ClienteDiaSemana"]] = relationship(
-        "ClienteDiaSemana", back_populates="cliente", lazy="selectin",passive_deletes=True
+        "ClienteDiaSemana",
+        back_populates="cliente",
+        lazy="selectin",
+        cascade="all, delete-orphan",
     )
     repartos_dias: Mapped[List["ClienteRepartoDia"]] = relationship(
-        "ClienteRepartoDia", back_populates="cliente", lazy="selectin",passive_deletes=True
+        "ClienteRepartoDia",
+        back_populates="cliente",
+        lazy="selectin",
+        cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:

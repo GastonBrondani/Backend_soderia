@@ -22,7 +22,7 @@ class Historico(Base):
 
     #FKs
     legajo: Mapped[int] = mapped_column(
-        ForeignKey("cliente.legajo"), 
+        ForeignKey("cliente.legajo", ondelete="CASCADE"), 
         nullable=False,
     )
     id_evento: Mapped[int] = mapped_column(

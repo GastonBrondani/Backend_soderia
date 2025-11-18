@@ -28,7 +28,7 @@ class Pedido(Base):
 
     #FKs
     legajo: Mapped[int] = mapped_column(
-        ForeignKey("cliente.legajo"),
+        ForeignKey("cliente.legajo", ondelete="CASCADE"),
         nullable=False,
     )
     id_medio_pago: Mapped[int] = mapped_column(

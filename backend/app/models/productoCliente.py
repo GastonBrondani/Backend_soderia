@@ -20,7 +20,7 @@ class ProductoCliente(Base):
 
     #PKs
     legajo: Mapped[int] = mapped_column(
-        ForeignKey("cliente.legajo"),
+        ForeignKey("cliente.legajo", ondelete="CASCADE"),
         primary_key=True,
         nullable=False,
     )
