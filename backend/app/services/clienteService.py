@@ -33,6 +33,7 @@ class ClienteService:
                                         selectinload(Cliente.productos),
                                         selectinload(Cliente.cuentas),
                                         selectinload(Cliente.dias_semanas),
+                                        selectinload(Cliente.historicos),
                                         )
                                         .where(Cliente.legajo == legajo))
         cliente=db.execute(stmt).scalars().first()
