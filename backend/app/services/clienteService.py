@@ -15,6 +15,11 @@ from app.models.clienteDiaSemana import ClienteDiaSemana
 #Schemas utilizados
 from app.schemas.clienteDetalle import ClienteDetalleOut, ClienteDetalleUpdate
 
+#Utilizados para guardar un historico del cliente
+from app.services.historicoService import registrar_evento_cliente
+from app.schemas.enumsHistorico import TipoEventoCodigoEnum
+
+
 
 class ClienteService:
 
@@ -143,6 +148,24 @@ class ClienteService:
                             orden=payload.get("orden"),
                         )
                     )
+
+        # === NUEVO: registrar histórico de actualización ===
+        # Armamos un json con SOLO lo que vino en el payload (campos seteadoss)
+        datos_evento = data.model_dump(exclude_unset=True, mode="json")
+
+        registrar_evento_cliente(
+            db,
+            legajo=cliente.legajo,
+            codigo_evento=TipoEventoCodigoEnum.CLIENTE_ACTUALIZADO,
+            observacion="Actualización de datos del cliente (detalle)",
+            datos={
+                "payload": datos_evento
+                # Más adelante le podés sumar cosas como:
+                # "origen": "BACKOFFICE" / "APP_REPARTO",
+                # "nota": "Actualizado desde pantalla de edición de cliente"
+            },
+        )
+        # === FIN NUEVO ===
 
         db.commit()
         db.refresh(cliente)
