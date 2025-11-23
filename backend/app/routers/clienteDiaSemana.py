@@ -13,6 +13,7 @@ from app.models.diaSemana import DiaSemana
 from app.models.cliente import Cliente
 from app.models.persona import Persona
 
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 
 
@@ -278,8 +279,19 @@ def eliminar_dia_visita_cliente(
     )
     db.commit()
 
-
-
+def _validar_dias_existen(db: Session, ids: list[int]) -> None:
+    if not ids:
+        return
+    rows = db.execute(
+        select(DiaSemana.id_dia).where(DiaSemana.id_dia.in_(ids))
+    ).scalars().all()
+    faltantes = set(ids) - set(rows)
+    if faltantes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Días inexistentes: {sorted(faltantes)}",
+        )
+    
 @router.post("/{legajo}/dias-visita",
              response_model=List[ClienteDiaVisitaOut],
              status_code=status.HTTP_201_CREATED)

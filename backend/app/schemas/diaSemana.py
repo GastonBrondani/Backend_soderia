@@ -7,8 +7,9 @@ class DiaSemanaBase(BaseModel):
 class DiaSemanaCreate(DiaSemanaBase):
     id_dia: int
 
-class DiaSemanaUpdate(BaseModel):
-    nombre_dia: Optional[str] = None
+class DiaSemanaUpdate(DiaSemanaBase):
+    #nombre_dia: Optional[str] = None
+    id_dia: Optional[int] = None
 
 class DiaSemanaOut(DiaSemanaBase):
     model_config = ConfigDict(from_attributes=True)

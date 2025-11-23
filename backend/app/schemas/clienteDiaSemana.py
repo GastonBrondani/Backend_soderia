@@ -15,11 +15,14 @@ class ClienteDiaSemanaCreate(ClienteDiaSemanaBase):
     despues_de_legajo: Optional[int] = None  # requerido si posicion = "despues"
 
 
-class ClienteDiaSemanaUpdate(BaseModel):
+class ClienteDiaSemanaCreate(ClienteDiaSemanaBase):
+    posicion: PosicionEnum = PosicionEnum.final
+    despues_de_legajo: Optional[int] = None  # requerido si posicion = "despues"
+
+class ClienteDiaSemanaUpdate(ClienteDiaSemanaBase):
     turno_visita: Optional[str] = None
     posicion: Optional[PosicionEnum] = None
     despues_de_legajo: Optional[int] = None
-
 
 class ClienteDiaSemanaOut(ClienteDiaSemanaBase):
     model_config = ConfigDict(from_attributes=True)
