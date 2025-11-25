@@ -1,6 +1,7 @@
 # app/api/routers/usuarios.py (o donde lo tengas)
 from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -32,4 +33,19 @@ def crear_usuario(payload: UsuarioCreate, db: Session = Depends(get_db)):
             status_code=409,
             detail="No se pudo crear el usuario (duplicado o FK inválida).",
         ) from e
+    return entity
+
+
+@router.get("/", response_model=list[UsuarioOut])
+def listar_usuarios(db: Session = Depends(get_db)):
+    stmt = select(Usuario)
+    result = db.scalars(stmt).all()
+    return result
+
+
+@router.get("/{id_usuario}", response_model=UsuarioOut)
+def obtener_usuario(id_usuario: int, db: Session = Depends(get_db)):
+    entity = db.get(Usuario, id_usuario)
+    if not entity:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return entity

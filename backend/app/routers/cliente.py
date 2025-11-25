@@ -245,50 +245,6 @@ def ListarClientes(db: Session = Depends(get_db)):
     )
     return clientes
 
-#Viejo put
-""" @router.put("/{legajo}", response_model=ClienteOut)
-def ActualizarCliente(legajo: int, payload: ClienteUpdate, db: Session = Depends(get_db)):
-    try:
-        cliente = db.get(Cliente, legajo)
-        if not cliente:
-            raise HTTPException(status_code=404, detail="Cliente no encontrado")
-
-        # dump parcial, EXCLUYENDO id_empresa para que jamás lo toquemos
-        data_cliente = payload.model_dump(
-            exclude_unset=True,
-            exclude={"id_empresa"}
-        )
-        persona_patch = data_cliente.pop("persona", None)
-
-        # setear solo campos con valor NO None (evita overwrites a NULL)
-        for campo, valor in data_cliente.items():
-            if valor is not None:
-                setattr(cliente, campo, valor)
-
-        if persona_patch:
-            persona = db.get(Persona, cliente.dni)
-            if not persona:
-                raise HTTPException(status_code=409, detail="Inconsistencia: el cliente no tiene persona asociada.")
-            for campo, valor in persona_patch.items():
-                if valor is not None:
-                    setattr(persona, campo, valor)
-
-        db.commit()
-        # asegurar persona en salida
-        cliente = (
-            db.query(Cliente)
-              .options(selectinload(Cliente.persona))
-              .filter(Cliente.legajo == legajo)
-              .first()
-        )
-        return cliente
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error actualizando cliente: {e}") """
-
 #Nuevo put que actualiza todo lo relacionado al cliente.
 @router.put("/{legajo}/detalle", response_model=ClienteDetalleOut)
 def update_cliente_detalle(
