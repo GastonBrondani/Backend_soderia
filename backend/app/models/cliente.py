@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from .productoCliente import ProductoCliente
     from .telefonoCliente import TelefonoCliente
     from .usuario import Usuario
+    from .visita import Visita
 
 from sqlalchemy import Integer, Text, ForeignKey, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -119,6 +120,13 @@ class Cliente(Base):
         back_populates="cliente",
         lazy="selectin",
         cascade="all, delete-orphan",
+    )
+
+    visitas: Mapped[List["Visita"]] = relationship(
+        "Visita",
+        back_populates="cliente",
+        lazy="selectin",
+        passive_deletes=True,
     )
 
     def __repr__(self) -> str:
