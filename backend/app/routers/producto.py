@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -45,3 +45,9 @@ def actualizar_producto(id_producto: int, payload: ProductoUpdate, db: Session =
     db.refresh(obj)
     return obj
 
+@router.delete("/{id_producto}", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_producto(id_producto: int, db: Session = Depends(get_db)):
+    obj = _get_producto_or_404(db, id_producto)
+    db.delete(obj)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
