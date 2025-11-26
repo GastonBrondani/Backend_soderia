@@ -8,6 +8,7 @@ from app.models.listaDePrecios import ListaDePrecios
 from app.models.listaPrecioProducto import ListaPrecioProducto
 from app.models.producto import Producto
 from app.schemas.listaPrecioProducto import LPPUpsert, LPPOut, LPPBasicOut
+from app.schemas.producto import ProductoConPrecioOut
 
 
 def _get_lista_or_404(db: Session, id_lista: int) -> ListaDePrecios:
@@ -99,3 +100,43 @@ def upsert_precios_bulk(db: Session, id_lista: int, items: List[LPPUpsert]) -> L
         ).order_by(ListaPrecioProducto.id_producto.asc())
     ).scalars().all()
     return rows
+
+def listar_productos_con_precio_por_lista(
+    db: Session,
+    id_lista: int,
+) -> List[ProductoConPrecioOut]:
+    # Verifico que la lista exista
+    _get_lista_or_404(db, id_lista)
+
+    # INNER JOIN Producto + ListaPrecioProducto filtrando por lista
+    stmt = (
+        select(
+            Producto.id_producto,
+            Producto.nombre,
+            Producto.estado,
+            Producto.litros,
+            Producto.tipo_dispenser,
+            Producto.observacion,
+            ListaPrecioProducto.precio,
+        )
+        .join(ListaPrecioProducto, ListaPrecioProducto.id_producto == Producto.id_producto)
+        .where(ListaPrecioProducto.id_lista == id_lista)
+        .order_by(Producto.nombre.asc())
+    )
+
+    rows = db.execute(stmt).all()
+
+    # Mapeo cada fila al schema de salida
+    return [
+        ProductoConPrecioOut(
+            id_producto=row.id_producto,
+            nombre=row.nombre,
+            estado=row.estado,
+            litros=row.litros,
+            tipo_dispenser=row.tipo_dispenser,
+            observacion=row.observacion,
+            precio=row.precio,
+            id_lista=id_lista,
+        )
+        for row in rows
+    ]

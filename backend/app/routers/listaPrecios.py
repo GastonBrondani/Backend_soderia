@@ -7,8 +7,10 @@ from app.schemas.listaPrecioProducto import LPPOut, LPPUpsert, LPPBasicOut
 from app.services.listaPrecioProductoService import (
     listar_precios_de_lista as svc_listar_precios_de_lista,
     upsert_precio as svc_upsert_precio,
+    listar_productos_con_precio_por_lista as svc_listar_productos_con_precio_por_lista,
     #upsert_precios_bulk as svc_upsert_precios_bulk,
 )
+from app.schemas.producto import ProductoConPrecioOut
 from app.schemas.listaDePrecios import (
     ListaDePreciosCreate, ListaDePreciosOut
 )
@@ -50,6 +52,18 @@ def crear_lista(payload: ListaDePreciosCreate, db: Session = Depends(get_db)):
 @router.get("/", response_model=list[ListaDePreciosOut])
 def listar_listas(db: Session = Depends(get_db), limit: int = 50, offset: int = 0):
     return svc_listar_listas(db, limit, offset)
+
+#Devuelve todos los productos que tienen precio cargado en la lista indicada, junto con ese precio.
+@router.get("/{id_lista}/productos", response_model=List[ProductoConPrecioOut])
+def listar_productos_con_precio(
+    id_lista: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Devuelve todos los productos que tienen precio cargado
+    en la lista indicada, junto con ese precio.
+    """
+    return svc_listar_productos_con_precio_por_lista(db, id_lista)
 
 #--- TODOO LO COMENTADO ANDA, PERO DE MOMENTO NO SE USA, LO DEJO PARA MAS ADELANTE ---
 
