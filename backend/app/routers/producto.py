@@ -4,9 +4,10 @@ from sqlalchemy import select
 
 from app.core.database import get_db
 from app.models.producto import Producto
-from app.schemas.producto import (
-    ProductoCreate, ProductoUpdate, ProductoOut,  # y si querés: ProductoWithPreciosOut
-)
+from app.schemas.producto import ProductoCreate, ProductoUpdate, ProductoOut
+
+
+
 
 router = APIRouter(prefix="/productos", tags=["Producto"])
 
@@ -28,7 +29,7 @@ def crear_producto(payload: ProductoCreate, db: Session = Depends(get_db)):
 @router.get("/", response_model=list[ProductoOut])
 def listar_productos(db: Session = Depends(get_db), limit: int = 50, offset: int = 0):
     rows = db.execute(select(Producto).offset(offset).limit(limit)).scalars().all()
-    return rows
+    return rows 
 
 @router.get("/{id_producto}", response_model=ProductoOut)
 def obtener_producto(id_producto: int, db: Session = Depends(get_db)):

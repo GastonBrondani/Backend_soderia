@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 from sqlalchemy import Integer, Text, DateTime, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
+from sqlalchemy.dialects.postgresql import JSONB
 
 #SCHEMA = "soderia"
 
@@ -38,12 +39,14 @@ class Historico(Base):
     )
     observacion: Mapped[Optional[str]] = mapped_column(Text)
 
+    datos: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
     #Relaciones
     cliente: Mapped["Cliente"] = relationship(
         "Cliente", back_populates="historicos", lazy="selectin"
     )
     
-    evento: Mapped["TipoEvento"] = relationship(
+    tipo_evento: Mapped["TipoEvento"] = relationship(
         "TipoEvento", back_populates="historicos", lazy="selectin"
     )
 

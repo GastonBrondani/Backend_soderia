@@ -11,6 +11,7 @@ from app.schemas.emailCliente import MailClienteOut, MailClienteUpdate
 from app.schemas.producto import ProductoOut
 from app.schemas.clienteCuenta import ClienteCuentaOut, ClienteCuentaUpdate
 from app.schemas.clienteDiaSemana import ClienteDiaSemanaOut, ClienteDiaSemanaUpdate
+from app.schemas.historico import HistoricoOut
 
 
 # Mostramos todo lo relacionado al cliente.
@@ -25,6 +26,7 @@ class ClienteDetalleOut(BaseModel):
     productos: List[ProductoOut] = Field(default_factory=list)
     cuentas: List[ClienteCuentaOut] = Field(default_factory=list)
     dias_semanas: List[ClienteDiaSemanaOut] = Field(default_factory=list)
+    historicos: List[HistoricoOut] = Field(default_factory=list)
 
 
 # relaciones adicionales

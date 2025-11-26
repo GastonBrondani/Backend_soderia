@@ -29,6 +29,11 @@ class ProductoOut(ProductoBase):
     model_config = ConfigDict(from_attributes=True)
     id_producto: int
 
+class ProductoConPrecioOut(ProductoOut):
+    """Producto + el precio de una lista en particular."""
+    precio: Decimal
+    id_lista: int
+
    
 # --------- “Ref” liviana para anidar en otros outputs ---------
 class ProductoRefOut(BaseModel):

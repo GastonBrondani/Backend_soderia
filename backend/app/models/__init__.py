@@ -30,6 +30,7 @@ from .tipoEvento import TipoEvento
 from .tipoMovimientoCaja import TipoMovimientoCaja
 from .usuario import Usuario
 from .usuarioRol import UsuarioRol
+from .visita import Visita
 
 __all__ = [
     "CajaEmpresa", "CamionReparto", "Cliente", "ClienteCuenta", "ClienteDiaSemana",
@@ -38,5 +39,5 @@ __all__ = [
     "ListaDePrecios", "ListaPrecioProducto", "MedioPago", "MovimientoStock",
     "Pedido", "PedidoProducto", "Persona", "Producto", "ProductoCliente",
     "Recorrido", "RepartoDia", "Rol", "Stock", "TelefonoCliente",
-    "TipoEvento", "TipoMovimientoCaja", "Usuario", "UsuarioRol"
+    "TipoEvento", "TipoMovimientoCaja", "Usuario", "UsuarioRol","Visita"
 ]

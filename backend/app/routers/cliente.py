@@ -26,6 +26,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query,status
 from app.services.clienteService import ClienteService
 from app.schemas.clienteDetalle import ClienteDetalleOut, ClienteDetalleUpdate
 
+#Para que se cree una cuenta de forma automatica un vez creado el cliente. hay que pasarlo a un service.
+from app.models.clienteCuenta import ClienteCuenta
+from app.schemas.clienteCuenta import ClienteCuentaCreate
+
+
 #--------------------- pasarlo a logica de servicio ---------------------
 
 
@@ -347,8 +352,18 @@ def CrearCliente(payload: ClienteCreate, db: Session = Depends(get_db)):
         if registros:
             db.add_all(registros)
 
-        # 6) Commit y retorno
+        # 6) Crear cuenta por defecto para el cliente
+        #    Usa los defaults del schema: saldo=0, deuda=0, numero_bidones=0
+        cuenta_payload = ClienteCuentaCreate()
+        cuenta_data = cuenta_payload.model_dump(exclude_unset=True)
+        cuenta = ClienteCuenta(legajo=nuevo.legajo, **cuenta_data)
+        db.add(cuenta)
+
+        # 7) Commit y retorno
         db.commit()
+        # Si querés, refrescás por si luego usás la cuenta:
+        db.refresh(cuenta)
+        
         return ClienteService.get_detalle_cliente(db, nuevo.legajo)
 
     except HTTPException:
