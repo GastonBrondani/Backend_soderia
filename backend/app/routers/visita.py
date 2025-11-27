@@ -10,6 +10,9 @@ from app.models.visita import Visita
 from app.schemas.visita import VisitaCreate, VisitaOut
 from app.api.deps import get_cliente_or_404_dep
 
+from app.services.historicoService import registrar_evento_cliente
+from app.schemas.enumsHistorico import TipoEventoCodigoEnum
+
 
 router = APIRouter(prefix="/visitas",tags=["Visitas"])
 
@@ -25,6 +28,21 @@ def crear_visita_cliente(payload: VisitaCreate,cliente: Cliente = Depends(get_cl
     )
 
     db.add(visita)
+    db.flush()  # 👈 genera id_visita sin hacer commit
+
+    # 2) Registrar evento histórico
+    registrar_evento_cliente(
+        db,
+        legajo=cliente.legajo,
+        codigo_evento=TipoEventoCodigoEnum.VISITA_REGISTRADA,
+        observacion=f"Visita registrada con estado: {payload.estado}",
+        datos={
+            "id_visita": visita.id_visita,
+            "estado": visita.estado,
+            "fecha": fecha.isoformat(),
+        },
+    )
+
     db.commit()
     db.refresh(visita)
 
