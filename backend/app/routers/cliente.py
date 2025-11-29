@@ -495,7 +495,7 @@ def listar_historico_cliente(
         .where(Historico.legajo == legajo)
         .order_by(Historico.fecha.desc())
         .limit(limit)
-        .options(selectinload(Historico.evento))   # si querés el nombre del evento
+        .options(selectinload(Historico.tipo_evento))   # si querés el nombre del evento
     )
     rows = db.execute(stmt).scalars().all()
 

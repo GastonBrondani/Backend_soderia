@@ -64,8 +64,8 @@ class ClienteDetalleOut(ClienteOut):
 # Ir agregando si es necesario.
 class ClienteDetalleUpdate(BaseModel):
     persona: Optional[PersonaUpdate] = None
-    direcciones: List[DireccionClienteUpdate] = None
-    telefonos: List[TelefonoClienteUpdate] = None
-    emails: List[MailClienteUpdate] = None
-    cuentas: List[ClienteCuentaUpdate] = None
-    dias_semanas: List[ClienteDiaSemanaUpdate] = None
+    direcciones: Optional[List[DireccionClienteUpdate]] = None
+    telefonos: Optional[List[TelefonoClienteUpdate]] = None
+    emails: Optional[List[MailClienteUpdate]] = None
+    cuentas: Optional[List[ClienteCuentaUpdate]] = None
+    dias_semanas: Optional[List[ClienteDiaSemanaUpdate]] = None
