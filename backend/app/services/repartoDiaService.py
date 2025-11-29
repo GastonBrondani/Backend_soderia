@@ -11,6 +11,7 @@ from fastapi import HTTPException
 
 from app.models.repartoDia import RepartoDia
 
+
 class RepartoDiaService:
     """
     Reglas de negocio para RepartoDia.
@@ -25,35 +26,30 @@ class RepartoDiaService:
             raise HTTPException(status_code=404, detail="Reparto día no encontrado.")
         return entity
 
+    
     @staticmethod
-    def list(
+    def get_by_fecha(
         db: Session,
         *,
-        id_usuario: Optional[int] = None,
+        fecha: date,
         id_empresa: Optional[int] = None,
-        fecha_desde: Optional[date] = None,
-        fecha_hasta: Optional[date] = None,
-        limit: int = 50,
-        offset: int = 0,
-    ) -> List[RepartoDia]:
-        conds = []
-        if id_usuario is not None:
-            conds.append(RepartoDia.id_usuario == id_usuario)
+        id_usuario: Optional[int] = None,
+    ) -> RepartoDia:
+        stmt = select(RepartoDia).where(RepartoDia.fecha == fecha)
+
         if id_empresa is not None:
-            conds.append(RepartoDia.id_empresa == id_empresa)
-        if fecha_desde is not None:
-            conds.append(RepartoDia.fecha >= fecha_desde)
-        if fecha_hasta is not None:
-            conds.append(RepartoDia.fecha <= fecha_hasta)
+            stmt = stmt.where(RepartoDia.id_empresa == id_empresa)
 
-        stmt = select(RepartoDia).order_by(
-            RepartoDia.fecha.desc(), RepartoDia.id_repartodia.desc()
-        ).limit(limit).offset(offset)
+        if id_usuario is not None:
+            stmt = stmt.where(RepartoDia.id_usuario == id_usuario)
 
-        if conds:
-            stmt = stmt.where(and_(*conds))
-
-        return db.execute(stmt).scalars().all()
+        entity = db.execute(stmt).scalars().first()
+        if not entity:
+            raise HTTPException(
+                status_code=404,
+                detail="Reparto día no encontrado para esa fecha.",
+            )
+        return entity
 
     # ---------- Escritura ----------
     @staticmethod
@@ -195,4 +191,6 @@ class RepartoDiaService:
         e.total_recaudado = e.total_efectivo + e.total_virtual
         db.commit()
         db.refresh(e)
-        return e
+        return e  
+
+   
