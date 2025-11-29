@@ -23,30 +23,20 @@ def crear_reparto_dia(payload: RepartoDiaCreate, db: Session = Depends(get_db)):
         observacion=payload.observacion,
     )
 
-#Obtener un reparto del día especifico por su id (Funciona)
-@router.get("/{id_repartodia}", response_model=RepartoDiaOut)
-def obtener_reparto_dia(id_repartodia: int, db: Session = Depends(get_db)):
-    return RepartoDiaService.get(db, id_repartodia)
 
-#Listamos todos los repartos del dia con filtros opcionales, como por ejemplo ponerle un fecha desde y hasta.(Funciona)
-@router.get("/", response_model=List[RepartoDiaOut])
-def listar_repartos_dia(
+#Obtener un reparto del día por fecha (Funciona)
+@router.get("/por-fecha", response_model=RepartoDiaOut)
+def obtener_reparto_dia_por_fecha(
+    fecha: date = Query(..., description="Fecha del reparto"),
+    id_empresa: Optional[int] = Query(None, description="Empresa (opcional, pero recomendable)"),
+    id_usuario: Optional[int] = Query(None, description="Usuario creador (opcional)"),
     db: Session = Depends(get_db),
-    id_usuario: Optional[int] = Query(default=None),
-    id_empresa: Optional[int] = Query(default=None),
-    fecha_desde: Optional[date] = Query(default=None),
-    fecha_hasta: Optional[date] = Query(default=None),
-    limit: int = Query(default=50, ge=1, le=500),
-    offset: int = Query(default=0, ge=0),
 ):
-    return RepartoDiaService.list(
+    return RepartoDiaService.get_by_fecha(
         db,
-        id_usuario=id_usuario,
+        fecha=fecha,
         id_empresa=id_empresa,
-        fecha_desde=fecha_desde,
-        fecha_hasta=fecha_hasta,
-        limit=limit,
-        offset=offset,
+        id_usuario=id_usuario,
     )
 #--------------------------------------------
 #Desabilitado por ahora el actulizar reparto del dia y eliminar
