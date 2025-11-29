@@ -1,7 +1,9 @@
-from datetime import datetime
+from datetime import datetime,date
+from typing import Optional
 
-from fastapi import Depends,status,APIRouter
+from fastapi import Depends,status,APIRouter,HTTPException,Query
 from sqlalchemy.orm import Session
+from sqlalchemy import select, func
 from app.core.database import get_db
 
 
@@ -47,3 +49,36 @@ def crear_visita_cliente(payload: VisitaCreate,cliente: Cliente = Depends(get_cl
     db.refresh(visita)
 
     return visita
+
+
+@router.get("/visitas", response_model=list[VisitaOut])
+def listar_visitas(
+    legajo: Optional[int] = Query(None),
+    fecha: Optional[date] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """
+    - Si se envía `legajo`, devuelve todas las visitas de ese cliente.
+    - Si se envía `fecha`, devuelve todas las visitas de esa fecha.
+    - Si se envían ambos, filtra por ambos (legajo + fecha).
+    - Si no se envía ninguno, devuelve 400.
+    """
+    if legajo is None and fecha is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Debes indicar al menos legajo o fecha.",
+        )
+
+    stmt = select(Visita)
+
+    if legajo is not None:
+        stmt = stmt.where(Visita.legajo == legajo)
+
+    if fecha is not None:
+        # compara solo la parte de fecha del DateTime
+        stmt = stmt.where(func.date(Visita.fecha) == fecha)
+
+    stmt = stmt.order_by(Visita.fecha.desc())
+
+    visitas = db.execute(stmt).scalars().all()
+    return visitas
