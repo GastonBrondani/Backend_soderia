@@ -58,6 +58,7 @@ class PedidoService:
                 if cuenta is None:
                     raise HTTPException(status_code=409, detail="El cliente no tiene cuenta creada.")
 
+<<<<<<< HEAD
                 # 3) Ajustar deuda por delta
                 deuda_actual = _q2(cuenta.deuda or Decimal("0"))
                 saldo_actual = _q2(cuenta.saldo or Decimal("0"))
@@ -74,8 +75,27 @@ class PedidoService:
                     cuenta.deuda = Decimal("0")
                     excedente = abs(deuda_nueva)  # lo que sobró del pago
                     cuenta.saldo = _q2(saldo_actual + excedente)
+=======
+                # 3) Ajustar deuda / saldo usando posición neta
+                deuda_actual = _q2(cuenta.deuda or Decimal("0"))
+                saldo_actual = _q2(cuenta.saldo or Decimal("0"))
+>>>>>>> ed6fb81f50c1e1f7696e96d19653970f2a70addf
 
-                # 4) Crear pedido (queda en borrador con su medio de pago elegido)
+                # posición_neta_actual = lo que te debe (deuda) menos lo que le debés (saldo)
+                neto_actual = _q2(deuda_actual - saldo_actual)
+
+                # nueva posición = posición actual + total del pedido - lo que paga ahora
+                neto_nuevo = _q2(neto_actual + total - abonado)
+
+                if neto_nuevo >= Decimal("0"):
+                    # Sigue debiendo (o queda justo en 0)
+                    cuenta.deuda = neto_nuevo
+                    cuenta.saldo = Decimal("0")
+                else:
+                    # Te queda debiendo 0 y pasa a tener saldo a favor
+                    cuenta.deuda = Decimal("0")
+                    cuenta.saldo = _q2(-neto_nuevo)
+                # 4) Crear pedido 
                 nuevo = Pedido(**{
                                     **pedido_create.model_dump(exclude_unset=True, exclude={"monto_total", "monto_abonado"}),
                                      "monto_total": total,
@@ -154,7 +174,11 @@ class PedidoService:
 
             # 6) Enlazar y cerrar
             ped.id_repartodia = data.id_repartodia
+<<<<<<< HEAD
             # ped.estado = "confirmado"
+=======
+            #ped.estado = "confirmado"
+>>>>>>> ed6fb81f50c1e1f7696e96d19653970f2a70addf
 
             db.flush()
             return PedidoOut.model_validate(ped)

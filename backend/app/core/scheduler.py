@@ -14,6 +14,8 @@ from app.models.repartoDia import RepartoDia
 from app.models.empresa import Empresa
 from app.models.usuario import Usuario
 
+from app.services.cajaEmpresaService import CajaEmpresaService
+
 
 scheduler: AsyncIOScheduler | None = None
 
@@ -46,9 +48,7 @@ def crear_repartos_del_dia_automaticos(
 
     usuario_sis = _get_usuario_sis_or_fail(db)
 
-    empresas_ids = db.execute(
-        select(Empresa.id_empresa)
-    ).scalars().all()
+    empresas_ids = db.execute(select(Empresa.id_empresa)).scalars().all()
 
     for id_empresa in empresas_ids:
         reparto = db.execute(
@@ -101,8 +101,16 @@ def start_scheduler() -> None:
         try:
             crear_repartos_del_dia_automaticos(db)
         finally:
-            db.close()
+            db.close()  
 
+    @scheduler.scheduled_job(CronTrigger(hour=23, minute=55))
+    def job_cerrar_caja():
+        db = SessionLocal()
+        try:            
+            CajaEmpresaService.generar_cierre_repartos_por_fecha(db)
+        finally:
+            db.close()  
+    
     scheduler.start()
 
 
