@@ -59,7 +59,21 @@ class PedidoService:
                     raise HTTPException(status_code=409, detail="El cliente no tiene cuenta creada.")
 
                 # 3) Ajustar deuda por delta
-                cuenta.deuda = _q2(cuenta.deuda) + delta_deuda
+                deuda_actual = _q2(cuenta.deuda or Decimal("0"))
+                saldo_actual = _q2(cuenta.saldo or Decimal("0"))
+
+                # deuda_nueva = deuda_actual + (total - abonado)
+                deuda_nueva = _q2(deuda_actual + delta_deuda)
+
+                if deuda_nueva >= Decimal("0"):
+                 # Caso normal: sigue debiendo algo (o queda en 0)
+                    cuenta.deuda = deuda_nueva
+                    # saldo no cambia
+                else:
+                    # Pagó de más: la deuda queda en 0 y el resto va a saldo
+                    cuenta.deuda = Decimal("0")
+                    excedente = abs(deuda_nueva)  # lo que sobró del pago
+                    cuenta.saldo = _q2(saldo_actual + excedente)
 
                 # 4) Crear pedido (queda en borrador con su medio de pago elegido)
                 nuevo = Pedido(**{
@@ -140,7 +154,7 @@ class PedidoService:
 
             # 6) Enlazar y cerrar
             ped.id_repartodia = data.id_repartodia
-            ped.estado = "confirmado"
+            # ped.estado = "confirmado"
 
             db.flush()
             return PedidoOut.model_validate(ped)

@@ -1,15 +1,9 @@
+from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import date
 from app.api.router import api_router 
-# app/main.py
-from __future__ import annotations
-
 from contextlib import asynccontextmanager
-
-from fastapi import FastAPI
-
-from app.api.router import api_router
 from app.core.scheduler import start_scheduler, stop_scheduler
 
 
@@ -21,14 +15,15 @@ async def lifespan(app: FastAPI):
     finally:        
         stop_scheduler()
 
-
 app = FastAPI(
     title="Soderia API",
     version="1.0.0",
     lifespan=lifespan, 
 )
 
-app = FastAPI()
+
+
+
 app.include_router(api_router)
 
 # 👇 permite que el front en localhost pueda pegarle
@@ -51,13 +46,3 @@ app.add_middleware(
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
-@app.get("/jornadas")
-def jornadas(year: int, month: int):
-    data = [
-        {"fecha": date(year, month, 1).isoformat(), "clientes": ["Ana", "Luis"]},
-        {"fecha": date(year, month, 1).isoformat(), "clientes": ["Carla"]},
-        {"fecha": date(year, month, 2).isoformat(), "clientes": []},
-        {"fecha": date(year, month, 3).isoformat(), "clientes": ["Marcos", "Tania", "Luz"]},
-    ]
-    return data
