@@ -33,6 +33,7 @@ def _bucket_medio_pago(nombre: str) -> str:
 class PedidoService:
 
     @staticmethod
+<<<<<<< HEAD
     def crear_pedido(db: Session, pedido_create: PedidoCreate) -> PedidoOut:
         total = _q2(pedido_create.monto_total)
         abonado = _q2(pedido_create.monto_abonado or Decimal("0"))
@@ -104,6 +105,8 @@ class PedidoService:
 
 
     @staticmethod
+=======
+>>>>>>> ee6955db23d478883f1131ef260d91de540c51ea
     def confirmar_pedido(db: Session, id_pedido: int, data: PedidoConfirmarIn) -> PedidoOut:
         with db.begin():
             # 1) Traer pedido y bloquear (evita doble confirmación)
@@ -178,5 +181,75 @@ class PedidoService:
             raise HTTPException(status_code=404, detail=f"No hay pedidos para la fecha {fecha.isoformat()}")
 
         return [PedidoOut.model_validate(p) for p in pedidos]
+    
+    @staticmethod
+    def crear_pedido(db: Session, pedido_create: PedidoCreate) -> PedidoOut:
+        total = _q2(pedido_create.monto_total)
+        abonado = _q2(pedido_create.monto_abonado or Decimal("0"))
+
+        try:
+            with db.begin():
+                # 1) Validar medio de pago y resolver bucket
+                mp = db.execute(
+                    select(MedioPago).where(MedioPago.id_medio_pago == pedido_create.id_medio_pago)
+                ).scalar_one_or_none()
+                if mp is None:
+                    raise HTTPException(status_code=400, detail="id_medio_pago inexistente.")                
+
+                # 2) Bloquear/traer cuenta del cliente
+                cuenta = db.execute(
+                    select(ClienteCuenta)
+                    .where(ClienteCuenta.legajo == pedido_create.legajo)
+                    .with_for_update()
+                ).scalar_one_or_none()
+                if cuenta is None:
+                    raise HTTPException(status_code=409, detail="El cliente no tiene cuenta creada.")
+
+                # 3) Ajustar deuda / saldo
+                deuda_actual = _q2(cuenta.deuda or Decimal("0"))
+                saldo_actual = _q2(cuenta.saldo or Decimal("0"))
+
+                if abonado < Decimal("0"):
+                    raise HTTPException(status_code=400, detail="monto_abonado no puede ser negativo.")
+
+                # Todo lo que el cliente tiene disponible para pagar ahora
+                pago_disponible = saldo_actual + abonado
+
+                # Todo lo que debería cubrir: deuda vieja + este pedido
+                deuda_total = deuda_actual + total
+
+                if pago_disponible >= deuda_total:
+                    # Cancela toda la deuda y el resto queda como saldo a favor
+                    deuda_nueva = Decimal("0")
+                    saldo_nuevo = pago_disponible - deuda_total
+                else:
+                    # Usa todo lo disponible y queda deuda
+                    deuda_nueva = deuda_total - pago_disponible
+                    saldo_nuevo = Decimal("0")
+
+                cuenta.deuda = _q2(deuda_nueva)
+                cuenta.saldo = _q2(saldo_nuevo)
+
+                # 4) Crear pedido (guardamos lo que vino del front)
+                nuevo = Pedido(
+                    **{
+                        **pedido_create.model_dump(
+                            exclude_unset=True,
+                            exclude={"monto_total", "monto_abonado"},
+                        ),
+                        "monto_total": total,
+                        "monto_abonado": abonado,
+                    }
+                )
+                db.add(nuevo)
+                db.flush()
+
+                return PedidoOut.model_validate(nuevo)
+
+        except HTTPException:
+            raise
+        except SQLAlchemyError:
+            db.rollback()
+            raise HTTPException(status_code=500, detail="Error interno al crear el pedido.")
         
     
