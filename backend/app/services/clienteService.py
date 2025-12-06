@@ -269,8 +269,4 @@ class ClienteService:
         db.commit()
         db.refresh(cliente)
 
-<<<<<<< HEAD
         return ClienteDetalleOut.model_validate(cliente)
-=======
-        return ClienteDetalleOut.model_validate(cliente)
->>>>>>> ed6fb81f50c1e1f7696e96d19653970f2a70addf
