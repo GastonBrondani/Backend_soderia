@@ -38,6 +38,14 @@ class PedidoCreate(PedidoBase):
     fecha: datetime  # obligatorio
     monto_total: Decimal  # obligatorio
 
+#Usado para cancelar deudas.
+class PedidoCancelarDeudaIn(BaseModel):
+    legajo: int
+    id_medio_pago: int
+    id_repartodia: int
+    monto: Decimal
+    observacion: str | None = None
+
 class PedidoOut(PedidoBase):
     model_config = ConfigDict(from_attributes=True)
     id_pedido: int

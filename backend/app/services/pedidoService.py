@@ -9,10 +9,10 @@ from app.models.pedido import Pedido
 from app.models.clienteCuenta import ClienteCuenta
 from app.models.medioPago import MedioPago
 from app.models.repartoDia import RepartoDia
-#from app.models.pedidoProducto import PedidoProducto
-#from app.models.listaPrecioProducto import ListaPrecioProducto
 
-from app.schemas.pedido import PedidoOut, PedidoCreate, PedidoConfirmarIn
+
+from app.schemas.pedido import PedidoOut, PedidoCreate, PedidoConfirmarIn, PedidoCancelarDeudaIn
+from app.schemas.clienteCuenta import ClienteCuentaOut
 
 from app.services.clienteRepartoDiaService import ClienteRepartoDiaService
 
@@ -177,5 +177,85 @@ class PedidoService:
         except SQLAlchemyError:
             db.rollback()
             raise HTTPException(status_code=500, detail="Error interno al crear el pedido.")
+        
+
+    @staticmethod
+    def cancelar_deuda(db: Session, data: PedidoCancelarDeudaIn) -> ClienteCuentaOut:
+        monto = _q2(data.monto)
+        if monto <= Decimal("0"):
+            raise HTTPException(status_code=400, detail="El monto debe ser mayor a 0.")
+
+        try:
+            with db.begin():
+                # 1) Validar medio de pago
+                mp = db.execute(
+                    select(MedioPago).where(MedioPago.id_medio_pago == data.id_medio_pago)
+                ).scalar_one_or_none()
+                if mp is None:
+                    raise HTTPException(status_code=400, detail="id_medio_pago inexistente.")
+
+                bucket = _bucket_medio_pago(mp.nombre)
+
+                # 2) Traer y bloquear cuenta del cliente
+                cuenta = db.execute(
+                    select(ClienteCuenta)
+                    .where(ClienteCuenta.legajo == data.legajo)
+                    .with_for_update()
+                ).scalar_one_or_none()
+                if cuenta is None:
+                    raise HTTPException(status_code=409, detail="El cliente no tiene cuenta creada.")
+
+                deuda_actual = _q2(cuenta.deuda or Decimal("0"))
+                saldo_actual = _q2(cuenta.saldo or Decimal("0"))
+
+                # 3) Traer y bloquear reparto_dia (para recaudación)
+                rep = db.execute(
+                    select(RepartoDia)
+                    .where(RepartoDia.id_repartodia == data.id_repartodia)
+                    .with_for_update()
+                ).scalar_one_or_none()
+                if rep is None:
+                    raise HTTPException(status_code=404, detail="Reparto del día no encontrado")
+
+                # 4) Actualizar recaudación del reparto
+                rep.total_recaudado = _q2(getattr(rep, "total_recaudado", Decimal("0.00"))) + monto
+                if bucket == "efectivo":
+                    rep.total_efectivo = _q2(getattr(rep, "total_efectivo", Decimal("0.00"))) + monto
+                else:
+                    rep.total_virtual = _q2(getattr(rep, "total_virtual", Decimal("0.00"))) + monto
+
+                # 5) Ajustar deuda / saldo (sin nuevo pedido -> total = 0)
+                pago_disponible = saldo_actual + monto      # todo lo que tiene para pagar ahora
+                deuda_total = deuda_actual                  # solo la deuda vieja
+
+                if pago_disponible >= deuda_total:
+                    deuda_nueva = Decimal("0")
+                    saldo_nuevo = pago_disponible - deuda_total
+                else:
+                    deuda_nueva = deuda_total - pago_disponible
+                    saldo_nuevo = Decimal("0")
+
+                cuenta.deuda = _q2(deuda_nueva)
+                cuenta.saldo = _q2(saldo_nuevo)
+
+                # 6) Registrar en cliente_reparto_dia (visita sin pedido, solo pago)
+                ClienteRepartoDiaService.upsert_desde_pedido(
+                    db=db,
+                    id_repartodia=data.id_repartodia,
+                    legajo=data.legajo,
+                    monto_abonado=monto,
+                    observacion=data.observacion or "Pago de cuenta sin pedido",
+                    bidones_entregado=None,  # o 0 si preferís
+                )
+
+                db.flush()
+                # Devolvemos la cuenta actualizada
+                return ClienteCuentaOut.model_validate(cuenta)
+
+        except HTTPException:
+            raise
+        except SQLAlchemyError:
+            db.rollback()
+            raise HTTPException(status_code=500, detail="Error interno al cancelar la deuda.")
         
     
