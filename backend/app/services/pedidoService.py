@@ -9,10 +9,15 @@ from app.models.pedido import Pedido
 from app.models.clienteCuenta import ClienteCuenta
 from app.models.medioPago import MedioPago
 from app.models.repartoDia import RepartoDia
+from app.models.pedidoProducto import PedidoProducto
+from app.models.movimientoStock import MovimientoStock        
+from app.models.stock import Stock                            
+#from app.models.recorrido import Recorrido Ver despues como implementar
 
 
 from app.schemas.pedido import PedidoOut, PedidoCreate, PedidoConfirmarIn, PedidoCancelarDeudaIn
 from app.schemas.clienteCuenta import ClienteCuentaOut
+from app.schemas.enumsStock import TipoMovimiento
 
 from app.services.clienteRepartoDiaService import ClienteRepartoDiaService
 
@@ -113,6 +118,8 @@ class PedidoService:
         total = _q2(pedido_create.monto_total)
         abonado = _q2(pedido_create.monto_abonado or Decimal("0"))
 
+        items = pedido_create.items or []
+
         try:
             with db.begin():
                 # 1) Validar medio de pago y resolver bucket
@@ -161,7 +168,7 @@ class PedidoService:
                     **{
                         **pedido_create.model_dump(
                             exclude_unset=True,
-                            exclude={"monto_total", "monto_abonado"},
+                            exclude={"monto_total", "monto_abonado", "items"},
                         ),
                         "monto_total": total,
                         "monto_abonado": abonado,
@@ -169,6 +176,81 @@ class PedidoService:
                 )
                 db.add(nuevo)
                 db.flush()
+
+                # 5) Si mandaron items -> crear pedido_producto, validar suma y mover stock
+                if items:
+                    total_items = Decimal("0")
+
+                    for item in items:
+                        cantidad = _q2(item.cantidad)
+                        precio_unitario = _q2(item.precio_unitario)
+
+                        total_items += cantidad * precio_unitario
+
+                        # 5.1) Crear detalle pedido_producto
+                        pp = PedidoProducto(
+                            id_pedido=nuevo.id_pedido,
+                            id_producto=item.id_producto,
+                            cantidad=cantidad,
+                            precio_unitario=precio_unitario,
+                        )
+                        db.add(pp)
+
+                        # 5.2) Actualizar STOCK (empresa + producto)
+                        stock_row = db.execute(
+                            select(Stock)
+                            .where(
+                                Stock.id_empresa == pedido_create.id_empresa,
+                                Stock.id_producto == item.id_producto,
+                            )
+                            .with_for_update()
+                        ).scalar_one_or_none()
+
+                        if stock_row is None:
+                            raise HTTPException(
+                                status_code=409,
+                                detail=(
+                                    f"No hay stock configurado para el producto "
+                                    f"{item.id_producto} en la empresa {pedido_create.id_empresa}."
+                                ),
+                            )
+
+                        stock_actual = _q2(stock_row.cantidad or Decimal("0"))
+
+                        if stock_actual < cantidad:
+                            raise HTTPException(
+                                status_code=409,
+                                detail=(
+                                    f"Stock insuficiente para el producto {item.id_producto}. "
+                                    f"Disponible: {stock_actual}, requerido: {cantidad}."
+                                ),
+                            )
+
+                        stock_row.cantidad = _q2(stock_actual - cantidad)
+
+                        # 5.3) Registrar movimiento_stock (EGRESO)
+                        ms = MovimientoStock(
+                            id_producto=item.id_producto,
+                            id_pedido=nuevo.id_pedido,
+                            # TODO: cuando definas recorrido, completar id_recorrido
+                            # id_recorrido=...,
+                            fecha=pedido_create.fecha,
+                            tipo_movimiento=TipoMovimiento.egreso, 
+                            cantidad=cantidad,
+                            observacion=f"Venta pedido {nuevo.id_pedido}",
+                        )
+                        db.add(ms)
+
+                    total_items = _q2(total_items)
+
+                    if total_items != total:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=(
+                                f"monto_total ({total}) no coincide con suma de items ({total_items}). "
+                                "Revisar cálculo en el front."
+                            ),
+                        )
 
                 return PedidoOut.model_validate(nuevo)
 
