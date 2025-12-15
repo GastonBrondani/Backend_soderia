@@ -33,7 +33,6 @@ def _bucket_medio_pago(nombre: str) -> str:
 class PedidoService:
 
     @staticmethod
-<<<<<<< HEAD
     def crear_pedido(db: Session, pedido_create: PedidoCreate) -> PedidoOut:
         total = _q2(pedido_create.monto_total)
         abonado = _q2(pedido_create.monto_abonado or Decimal("0"))
@@ -105,8 +104,6 @@ class PedidoService:
 
 
     @staticmethod
-=======
->>>>>>> ee6955db23d478883f1131ef260d91de540c51ea
     def confirmar_pedido(db: Session, id_pedido: int, data: PedidoConfirmarIn) -> PedidoOut:
         with db.begin():
             # 1) Traer pedido y bloquear (evita doble confirmación)

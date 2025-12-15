@@ -11,6 +11,8 @@ class ProductoBase(BaseModel):
     litros: Optional[Decimal] = None
     tipo_dispenser: Optional[str] = None
     observacion: Optional[str] = None
+    stock_inicial: Optional[int] = None        # cantidad inicial
+    id_empresa_stock: Optional[int] = None     # empresa donde se crea el stock inicial
 
     @field_validator("nombre", "estado", "tipo_dispenser", "observacion")
     @classmethod
