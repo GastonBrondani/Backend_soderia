@@ -4,8 +4,9 @@ from sqlalchemy import select
 
 from app.core.database import get_db
 from app.models.movimientoStock import MovimientoStock
-from app.schemas.movimientoStock import MovimientoCreate, MovimientoOut, TipoMovimiento
+from app.schemas.movimientoStock import MovimientoCreate, MovimientoOut
 from app.services.stockService import StockService
+from app.schemas.enumsStock import TipoMovimiento
 
 router = APIRouter(prefix="/movimientos-stock", tags=["Movimiento de Stock"])
 

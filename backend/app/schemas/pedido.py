@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, field_validator, ConfigDict,Field
 from enum import StrEnum
 from datetime import datetime
@@ -13,17 +13,23 @@ class EstadoPedido(StrEnum):
     pedido_postergado = "pedido postergado" #El cliente pidio postergar el pedido para otro momento/horario
     cliente_pago_de_mas = "cliente pago de más" #El cliente pago de mas queda con saldo a favor en cliente cuenta.
 
+class PedidoItemCreate(BaseModel):
+    id_producto: int
+    cantidad: Decimal
+    precio_unitario: Decimal
+
 class PedidoBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     legajo: int
-    id_medio_pago: int                  # NOT NULL en DB
+    id_medio_pago: int                  
     id_empresa: int = 1
-    fecha: datetime = Field(default_factory=datetime.now)  # tu DB es "without time zone"
+    fecha: datetime = Field(default_factory=datetime.now) 
     monto_total: Decimal
     monto_abonado: Decimal = Decimal("0.00")
     estado: EstadoPedido = EstadoPedido.pendiente
     observacion: Optional[str] = None
+    items: Optional[List[PedidoItemCreate]] = None
     id_repartodia: Optional[int] = None
 
     @field_validator("estado", "observacion")
@@ -38,6 +44,14 @@ class PedidoCreate(PedidoBase):
     id_empresa: int  # obligatorio
     fecha: datetime  # obligatorio
     monto_total: Decimal  # obligatorio
+
+#Usado para cancelar deudas.
+class PedidoCancelarDeudaIn(BaseModel):
+    legajo: int
+    id_medio_pago: int
+    id_repartodia: int
+    monto: Decimal
+    observacion: str | None = None
 
 class PedidoOut(PedidoBase):
     model_config = ConfigDict(from_attributes=True)
