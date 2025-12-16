@@ -6,11 +6,7 @@ from app.core.database import get_db
 from app.models.producto import Producto
 from app.schemas.producto import ProductoCreate, ProductoUpdate, ProductoOut
 from app.services.stockService import StockService
-<<<<<<< HEAD
 from app.schemas.enumsStock import TipoMovimiento    
-=======
-from app.schemas.enumsStock import TipoMovimiento
->>>>>>> c25d208eb809613ec1bcf224820a83c81e967a93
 
 
 

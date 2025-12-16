@@ -12,6 +12,9 @@ from app.models.clienteDiaSemana import ClienteDiaSemana
 from app.models.diaSemana import DiaSemana
 from app.models.cliente import Cliente
 from app.models.persona import Persona
+from app.models.visita import Visita
+from sqlalchemy import and_, func
+
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
@@ -44,6 +47,7 @@ class ClientePorDiaItem(BaseModel):
     nombre: Optional[str] = None
     apellido: Optional[str] = None
     turno_visita: Optional[str] = None
+    estado_visita: str
 
 class ClientesPorDiaOut(BaseModel):
     fecha: date
@@ -75,14 +79,27 @@ def listar_clientes_por_fecha(
             ClienteDiaSemana.turno_visita,
             ClienteDiaSemana.id_dia,
             DiaSemana.nombre_dia,
+            Visita.estado.label("estado_visita"),
         )
         .select_from(ClienteDiaSemana)
         .join(Cliente, Cliente.legajo == ClienteDiaSemana.id_cliente)
         .outerjoin(Persona, Persona.dni == Cliente.dni)
         .join(DiaSemana, DiaSemana.id_dia == ClienteDiaSemana.id_dia)
+        .outerjoin(
+            Visita,
+            and_(
+                Visita.legajo == Cliente.legajo,
+                func.date(Visita.fecha) == fecha,
+            ),
+        )
         .where(ClienteDiaSemana.id_dia == id_dia)
-        .order_by(ClienteDiaSemana.turno_visita, Persona.apellido, Persona.nombre)
+        .order_by(
+            ClienteDiaSemana.turno_visita,
+            Persona.apellido,
+            Persona.nombre,
+            )
     )
+
     
     if turno:
         stmt = stmt.where(ClienteDiaSemana.turno_visita.ilike(turno))
@@ -95,20 +112,22 @@ def listar_clientes_por_fecha(
     ).scalar_one()
 
     return ClientesPorDiaOut(
-        fecha=fecha,
-        id_dia=id_dia,
-        nombre_dia=nombre_dia,
-        clientes=[
-            ClientePorDiaItem(
-                legajo=r.legajo,
-                dni=r.dni,
-                nombre=r.nombre,
-                apellido=r.apellido,
-                turno_visita=r.turno_visita,
-            )
-            for r in rows
-        ],
-    )
+    fecha=fecha,
+    id_dia=id_dia,
+    nombre_dia=nombre_dia,
+    clientes=[
+        ClientePorDiaItem(
+            legajo=r.legajo,
+            dni=r.dni,
+            nombre=r.nombre,
+            apellido=r.apellido,
+            turno_visita=r.turno_visita,
+            estado_visita=r.estado_visita or "pendiente",
+        )
+        for r in rows
+    ],
+)
+
 
 # ---- Helper de validación ----
 def _validar_dias_existen(db: Session, ids: List[int]) -> None:
