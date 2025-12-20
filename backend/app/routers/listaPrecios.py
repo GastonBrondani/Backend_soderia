@@ -21,6 +21,17 @@ from app.services.listaPrecioService import (
     #actualizar_lista as svc_actualizar_lista,
     #eliminar_lista as svc_eliminar_lista
 )
+from app.schemas.listaPrecioCombo import LPCOut as LPCOutCombo, LPCUpsert as LPCUpsertCombo, LPCBasicOut as LPCBasicOutCombo
+from app.schemas.combo import ComboConPrecioOut
+from app.services.listaPrecioComboService import (
+    listar_precios_de_lista_combo as svc_listar_precios_de_lista_combo,
+    upsert_precio_combo as svc_upsert_precio_combo,
+    listar_combos_con_precio_por_lista as svc_listar_combos_con_precio_por_lista,
+)
+#Estos son los nuevos que hay que utilizar, ver como integrarlos con los viejos
+from app.schemas.precioItem import PrecioItemUpsert, PrecioItemOut, TipoItemPrecio
+from app.services.listaPrecioItemService import upsert_precio_item as svc_upsert_precio_item
+from app.services.listaPrecioItemService import listar_items_con_precio as svc_listar_items_con_precio
 
 router = APIRouter(prefix="/listas-precios", tags=["ListaDePrecios"])
 
@@ -64,6 +75,59 @@ def listar_productos_con_precio(
     en la lista indicada, junto con ese precio.
     """
     return svc_listar_productos_con_precio_por_lista(db, id_lista)
+
+
+@router.get("/{id_lista}/precios-combos", response_model=List[LPCBasicOutCombo])
+def listar_precios_de_lista_combos(
+    id_lista: int,
+    db: Session = Depends(get_db),
+    include_combo: bool = Query(True, description="Incluye nombre del combo (optimiza para UI)"),
+):
+    return svc_listar_precios_de_lista_combo(db, id_lista, include_combo)
+
+
+@router.put("/{id_lista}/precios-combos/{id_combo}", response_model=LPCOutCombo)
+def upsert_precio_combo(
+    id_lista: int,
+    id_combo: int,
+    payload: LPCUpsertCombo,
+    db: Session = Depends(get_db),
+):
+    payload.id_lista = id_lista
+    payload.id_combo = id_combo
+    return svc_upsert_precio_combo(db, id_lista, payload)
+
+
+@router.get("/{id_lista}/combos", response_model=List[ComboConPrecioOut])
+def listar_combos_con_precio(
+    id_lista: int,
+    db: Session = Depends(get_db),
+):
+    return svc_listar_combos_con_precio_por_lista(db, id_lista)
+
+@router.put("/{id_lista}/precios/{tipo}/{id_item}", response_model=PrecioItemOut)
+def upsert_precio_global(
+    id_lista: int,
+    tipo: TipoItemPrecio,   # "producto" | "combo"
+    id_item: int,
+    payload: PrecioItemUpsert,
+    db: Session = Depends(get_db),
+):
+    return svc_upsert_precio_item(
+        db,
+        id_lista=id_lista,
+        tipo=tipo,
+        id_item=id_item,
+        precio=payload.precio,
+    )
+
+
+@router.get("/{id_lista}/items", response_model=List[PrecioItemOut])
+def listar_items_de_lista(
+    id_lista: int,
+    db: Session = Depends(get_db),
+):
+    return svc_listar_items_con_precio(db, id_lista=id_lista)
 
 #--- TODOO LO COMENTADO ANDA, PERO DE MOMENTO NO SE USA, LO DEJO PARA MAS ADELANTE ---
 

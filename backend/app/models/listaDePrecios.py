@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
     from .listaPrecioProducto import ListaPrecioProducto
+    from .listaPrecioCombo import ListaPrecioCombo
 
 from sqlalchemy import Integer, String, DateTime, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -34,6 +35,8 @@ class ListaDePrecios(Base):
     lista_productos: Mapped[List["ListaPrecioProducto"]] = relationship(
         "ListaPrecioProducto",back_populates="lista",lazy="selectin"
     )
+    listas_precios_combos: Mapped[List["ListaPrecioCombo"]] = relationship("ListaPrecioCombo", back_populates="lista", lazy="selectin")
+
 
     def __repr__(self) -> str:
         return f"<ListaDePrecios id={self.id_lista} nombre={self.nombre} estado={self.estado}>"

@@ -53,6 +53,8 @@ class Empresa(Base):
     stocks: Mapped[List["Stock"]] = relationship(
         "Stock", back_populates="empresa", lazy="selectin"
     )
+    combos = relationship("Combo", back_populates="empresa", lazy="selectin")
+
 
     def __repr__(self) -> str:
         return f"<Empresa id={self.id_empresa} razon_social={self.razon_social}>"

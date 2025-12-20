@@ -8,8 +8,9 @@ if TYPE_CHECKING:
     from .pedidoProducto import PedidoProducto
     from .productoCliente import ProductoCliente
     from .stock import Stock
+    from .comboProducto import ComboProducto
 
-from sqlalchemy import Integer, String, Numeric, Text
+from sqlalchemy import Integer, String, Numeric, Text, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
@@ -46,6 +47,13 @@ class Producto(Base):
     )
     stocks: Mapped[List["Stock"]] = relationship(
         "Stock", back_populates="producto", lazy="selectin"
+    )
+    combos_productos: Mapped[List["ComboProducto"]] = relationship("ComboProducto", back_populates="producto", lazy="selectin")
+    descuenta_stock: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default="true",
     )
 
     def __repr__(self) -> str:

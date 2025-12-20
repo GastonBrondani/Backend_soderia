@@ -11,7 +11,8 @@ from app.models.medioPago import MedioPago
 from app.models.repartoDia import RepartoDia
 from app.models.pedidoProducto import PedidoProducto
 from app.models.movimientoStock import MovimientoStock        
-from app.models.stock import Stock                            
+from app.models.stock import Stock
+from app.models.producto import Producto                           
 #from app.models.recorrido import Recorrido Ver despues como implementar
 
 
@@ -35,78 +36,7 @@ def _bucket_medio_pago(nombre: str) -> str:
         return "virtual"
     raise HTTPException(status_code=400, detail=f"medio_pago no soportado: {nombre!r}")
 
-class PedidoService:
-
-    @staticmethod
-    def crear_pedido(db: Session, pedido_create: PedidoCreate) -> PedidoOut:
-        total = _q2(pedido_create.monto_total)
-        abonado = _q2(pedido_create.monto_abonado or Decimal("0"))
-
-        try:
-            with db.begin():
-                # 1) Validar medio de pago y resolver bucket
-                mp = db.execute(
-                    select(MedioPago).where(MedioPago.id_medio_pago == pedido_create.id_medio_pago)
-                ).scalar_one_or_none()
-                if mp is None:
-                    raise HTTPException(status_code=400, detail="id_medio_pago inexistente.")                
-
-                # 2) Bloquear/traer cuenta del cliente
-                cuenta = db.execute(
-                    select(ClienteCuenta)
-                    .where(ClienteCuenta.legajo == pedido_create.legajo)
-                    .with_for_update()
-                ).scalar_one_or_none()
-                if cuenta is None:
-                    raise HTTPException(status_code=409, detail="El cliente no tiene cuenta creada.")
-
-                # 3) Ajustar deuda / saldo
-                deuda_actual = _q2(cuenta.deuda or Decimal("0"))
-                saldo_actual = _q2(cuenta.saldo or Decimal("0"))
-
-                if abonado < Decimal("0"):
-                    raise HTTPException(status_code=400, detail="monto_abonado no puede ser negativo.")
-
-                # Todo lo que el cliente tiene disponible para pagar ahora
-                pago_disponible = saldo_actual + abonado
-
-                # Todo lo que debería cubrir: deuda vieja + este pedido
-                deuda_total = deuda_actual + total
-
-                if pago_disponible >= deuda_total:
-                    # Cancela toda la deuda y el resto queda como saldo a favor
-                    deuda_nueva = Decimal("0")
-                    saldo_nuevo = pago_disponible - deuda_total
-                else:
-                    # Usa todo lo disponible y queda deuda
-                    deuda_nueva = deuda_total - pago_disponible
-                    saldo_nuevo = Decimal("0")
-
-                cuenta.deuda = _q2(deuda_nueva)
-                cuenta.saldo = _q2(saldo_nuevo)
-
-                # 4) Crear pedido (guardamos lo que vino del front)
-                nuevo = Pedido(
-                    **{
-                        **pedido_create.model_dump(
-                            exclude_unset=True,
-                            exclude={"monto_total", "monto_abonado"},
-                        ),
-                        "monto_total": total,
-                        "monto_abonado": abonado,
-                    }
-                )
-                db.add(nuevo)
-                db.flush()
-
-                return PedidoOut.model_validate(nuevo)
-
-        except HTTPException:
-            raise
-        except SQLAlchemyError:
-            db.rollback()
-            raise HTTPException(status_code=500, detail="Error interno al crear el pedido.")
-
+class PedidoService:   
 
     @staticmethod
     def confirmar_pedido(db: Session, id_pedido: int, data: PedidoConfirmarIn) -> PedidoOut:
@@ -193,12 +123,12 @@ class PedidoService:
 
         try:
             with db.begin():
-                # 1) Validar medio de pago y resolver bucket
+                # 1) Validar medio de pago
                 mp = db.execute(
                     select(MedioPago).where(MedioPago.id_medio_pago == pedido_create.id_medio_pago)
                 ).scalar_one_or_none()
                 if mp is None:
-                    raise HTTPException(status_code=400, detail="id_medio_pago inexistente.")                
+                    raise HTTPException(status_code=400, detail="id_medio_pago inexistente.")
 
                 # 2) Bloquear/traer cuenta del cliente
                 cuenta = db.execute(
@@ -216,18 +146,13 @@ class PedidoService:
                 if abonado < Decimal("0"):
                     raise HTTPException(status_code=400, detail="monto_abonado no puede ser negativo.")
 
-                # Todo lo que el cliente tiene disponible para pagar ahora
                 pago_disponible = saldo_actual + abonado
-
-                # Todo lo que debería cubrir: deuda vieja + este pedido
                 deuda_total = deuda_actual + total
 
                 if pago_disponible >= deuda_total:
-                    # Cancela toda la deuda y el resto queda como saldo a favor
                     deuda_nueva = Decimal("0")
                     saldo_nuevo = pago_disponible - deuda_total
                 else:
-                    # Usa todo lo disponible y queda deuda
                     deuda_nueva = deuda_total - pago_disponible
                     saldo_nuevo = Decimal("0")
 
@@ -246,9 +171,9 @@ class PedidoService:
                     }
                 )
                 db.add(nuevo)
-                db.flush()
+                db.flush()  # necesitamos nuevo.id_pedido
 
-                # 5) Si mandaron items -> crear pedido_producto, validar suma y mover stock
+                # 5) Items: siempre pedido_producto, stock solo si descuenta_stock = True
                 if items:
                     total_items = Decimal("0")
 
@@ -258,16 +183,29 @@ class PedidoService:
 
                         total_items += cantidad * precio_unitario
 
-                        # 5.1) Crear detalle pedido_producto
+                        # 5.1) siempre guardamos detalle en pedido_producto
                         pp = PedidoProducto(
                             id_pedido=nuevo.id_pedido,
                             id_producto=item.id_producto,
-                            cantidad=cantidad,
-                            precio_unitario=precio_unitario,
+                            id_combo=item.id_combo if hasattr(item, "id_combo") else None,
+                            cantidad=int(cantidad),
+                            precio_unitario=str(precio_unitario),
                         )
                         db.add(pp)
 
-                        # 5.2) Actualizar STOCK (empresa + producto)
+                        # 5.2) traemos el producto para ver si descuenta stock
+                        prod = db.get(Producto, item.id_producto)
+                        if prod is None:
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"Producto {item.id_producto} inexistente.",
+                            )
+
+                        # Si NO descuenta stock (ej: bidón retornable), no tocamos stock ni movimiento
+                        if not prod.descuenta_stock:
+                            continue
+
+                        # 5.3) actualizar STOCK (empresa + producto)
                         stock_row = db.execute(
                             select(Stock)
                             .where(
@@ -299,21 +237,19 @@ class PedidoService:
 
                         stock_row.cantidad = _q2(stock_actual - cantidad)
 
-                        # 5.3) Registrar movimiento_stock (EGRESO)
+                        # 5.4) Registrar movimiento_stock (EGRESO)
                         ms = MovimientoStock(
                             id_producto=item.id_producto,
                             id_pedido=nuevo.id_pedido,
-                            # TODO: cuando definas recorrido, completar id_recorrido
-                            # id_recorrido=...,
+                            # id_recorrido lo completás cuando tengas la lógica clara
                             fecha=pedido_create.fecha,
-                            tipo_movimiento=TipoMovimiento.egreso, 
+                            tipo_movimiento=TipoMovimiento.egreso,
                             cantidad=cantidad,
                             observacion=f"Venta pedido {nuevo.id_pedido}",
                         )
                         db.add(ms)
 
                     total_items = _q2(total_items)
-
                     if total_items != total:
                         raise HTTPException(
                             status_code=400,
