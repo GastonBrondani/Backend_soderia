@@ -3,8 +3,9 @@ from sqlalchemy import select, cast, Date
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi import HTTPException
-from datetime import date
+from datetime import date, datetime
 
+from app.models.pago import Pago
 from app.models.pedido import Pedido
 from app.models.clienteCuenta import ClienteCuenta
 from app.models.medioPago import MedioPago
@@ -21,6 +22,7 @@ from app.schemas.clienteCuenta import ClienteCuentaOut
 from app.schemas.enumsStock import TipoMovimiento
 
 from app.services.clienteRepartoDiaService import ClienteRepartoDiaService
+from app.services.pagoService import PagoService
 
 TWOPLACES = Decimal("0.01")
 
@@ -55,7 +57,9 @@ class PedidoService:
 
             # 2) Traer reparto_dia y bloquear
             rep = db.execute(
-                select(RepartoDia).where(RepartoDia.id_repartodia == data.id_repartodia).with_for_update()
+                select(RepartoDia)
+                .where(RepartoDia.id_repartodia == data.id_repartodia)
+                .with_for_update()
             ).scalar_one_or_none()
             if rep is None:
                 raise HTTPException(status_code=404, detail="Reparto del día no encontrado")
@@ -64,22 +68,27 @@ class PedidoService:
             if hasattr(rep, "id_empresa") and hasattr(ped, "id_empresa") and rep.id_empresa != ped.id_empresa:
                 raise HTTPException(status_code=409, detail="El pedido y el reparto pertenecen a empresas distintas")
 
-            # 3) Resolver bucket según nombre del medio de pago
-            mp = db.execute(
-                select(MedioPago).where(MedioPago.id_medio_pago == ped.id_medio_pago)
-            ).scalar_one_or_none()
-            if mp is None:
-                raise HTTPException(status_code=400, detail="id_medio_pago del pedido no existe")
-            bucket = _bucket_medio_pago(mp.nombre)
-
-            # 4) Sumar recaudación (solo si abonado > 0)
+            # ✅ NUEVO: crear pago si corresponde (y evitar duplicado)
             abonado = _q2(ped.monto_abonado)
             if abonado > 0:
-                rep.total_recaudado = _q2(getattr(rep, "total_recaudado", Decimal("0.00"))) + abonado
-                if bucket == "efectivo":
-                    rep.total_efectivo = _q2(getattr(rep, "total_efectivo", Decimal("0.00"))) + abonado
-                else:
-                    rep.total_virtual = _q2(getattr(rep, "total_virtual", Decimal("0.00"))) + abonado
+                ya = db.execute(
+                    select(Pago.id_pago).where(Pago.id_pedido == ped.id_pedido)
+                ).first()
+                if ya:
+                    raise HTTPException(status_code=409, detail="Ya existe un pago registrado para este pedido.")
+
+                PagoService.crear(
+                    db,
+                    id_empresa=ped.id_empresa,
+                    id_medio_pago=ped.id_medio_pago,
+                    fecha=datetime.now(),
+                    monto=abonado,
+                    tipo_pago="COBRO_PEDIDO",
+                    observacion=ped.observacion,
+                    legajo=ped.legajo,
+                    id_pedido=ped.id_pedido,
+                    id_repartodia=data.id_repartodia,
+                )
 
             # 5) Volcar info del pedido a cliente_reparto_dia
             ClienteRepartoDiaService.upsert_desde_pedido(
@@ -88,14 +97,11 @@ class PedidoService:
                 legajo=ped.legajo,
                 monto_abonado=ped.monto_abonado,
                 observacion=ped.observacion,
-                # si más adelante calculás bidones desde items, pasalo acá:
                 bidones_entregado=None,
             )
 
-
             # 6) Enlazar y cerrar
-            ped.id_repartodia = data.id_repartodia
-            #ped.estado = "confirmado"
+            ped.id_repartodia = data.id_repartodia            
 
             db.flush()
             return PedidoOut.model_validate(ped)
@@ -276,28 +282,14 @@ class PedidoService:
 
         try:
             with db.begin():
-                # 1) Validar medio de pago
+                # 1) Validar medio de pago (opcional, PagoService también lo valida)
                 mp = db.execute(
                     select(MedioPago).where(MedioPago.id_medio_pago == data.id_medio_pago)
                 ).scalar_one_or_none()
                 if mp is None:
                     raise HTTPException(status_code=400, detail="id_medio_pago inexistente.")
 
-                bucket = _bucket_medio_pago(mp.nombre)
-
-                # 2) Traer y bloquear cuenta del cliente
-                cuenta = db.execute(
-                    select(ClienteCuenta)
-                    .where(ClienteCuenta.legajo == data.legajo)
-                    .with_for_update()
-                ).scalar_one_or_none()
-                if cuenta is None:
-                    raise HTTPException(status_code=409, detail="El cliente no tiene cuenta creada.")
-
-                deuda_actual = _q2(cuenta.deuda or Decimal("0"))
-                saldo_actual = _q2(cuenta.saldo or Decimal("0"))
-
-                # 3) Traer y bloquear reparto_dia (para recaudación)
+                # 2) Traer y bloquear reparto_dia (para obtener empresa + evitar carreras)
                 rep = db.execute(
                     select(RepartoDia)
                     .where(RepartoDia.id_repartodia == data.id_repartodia)
@@ -306,39 +298,47 @@ class PedidoService:
                 if rep is None:
                     raise HTTPException(status_code=404, detail="Reparto del día no encontrado")
 
-                # 4) Actualizar recaudación del reparto
-                rep.total_recaudado = _q2(getattr(rep, "total_recaudado", Decimal("0.00"))) + monto
-                if bucket == "efectivo":
-                    rep.total_efectivo = _q2(getattr(rep, "total_efectivo", Decimal("0.00"))) + monto
-                else:
-                    rep.total_virtual = _q2(getattr(rep, "total_virtual", Decimal("0.00"))) + monto
+                # 3) ✅ Crear PAGO (esto debe:
+                #    - crear pago
+                #    - crear caja_empresa
+                #    - actualizar cliente_cuenta (deuda/saldo)
+                #    - sumar recaudación del reparto (si lo implementaste en PagoService)
+                id_empresa = getattr(rep, "id_empresa", None)
+                if id_empresa is None:
+                    # Si tu RepartoDia no tiene id_empresa, agregá id_empresa al schema y usá data.id_empresa acá.
+                    raise HTTPException(status_code=400, detail="No se pudo resolver id_empresa para el pago.")
 
-                # 5) Ajustar deuda / saldo (sin nuevo pedido -> total = 0)
-                pago_disponible = saldo_actual + monto      # todo lo que tiene para pagar ahora
-                deuda_total = deuda_actual                  # solo la deuda vieja
+                PagoService.crear(
+                    db,
+                    id_empresa=id_empresa,
+                    id_medio_pago=data.id_medio_pago,
+                    fecha=datetime.now(),
+                    monto=monto,
+                    tipo_pago="PAGO_DEUDA",
+                    observacion=data.observacion or "Pago de cuenta sin pedido",
+                    legajo=data.legajo,
+                    id_repartodia=data.id_repartodia,
+                )
 
-                if pago_disponible >= deuda_total:
-                    deuda_nueva = Decimal("0")
-                    saldo_nuevo = pago_disponible - deuda_total
-                else:
-                    deuda_nueva = deuda_total - pago_disponible
-                    saldo_nuevo = Decimal("0")
-
-                cuenta.deuda = _q2(deuda_nueva)
-                cuenta.saldo = _q2(saldo_nuevo)
-
-                # 6) Registrar en cliente_reparto_dia (visita sin pedido, solo pago)
+                # 4) Registrar en cliente_reparto_dia (visita sin pedido, solo pago)
                 ClienteRepartoDiaService.upsert_desde_pedido(
                     db=db,
                     id_repartodia=data.id_repartodia,
                     legajo=data.legajo,
                     monto_abonado=monto,
                     observacion=data.observacion or "Pago de cuenta sin pedido",
-                    bidones_entregado=None,  # o 0 si preferís
+                    bidones_entregado=None,
                 )
 
+                # 5) Devolver la cuenta actualizada (releer)
+                cuenta = db.execute(
+                    select(ClienteCuenta).where(ClienteCuenta.legajo == data.legajo)
+                ).scalars().first()
+
+                if cuenta is None:
+                    raise HTTPException(status_code=409, detail="El cliente no tiene cuenta creada.")
+
                 db.flush()
-                # Devolvemos la cuenta actualizada
                 return ClienteCuentaOut.model_validate(cuenta)
 
         except HTTPException:

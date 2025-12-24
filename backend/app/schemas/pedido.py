@@ -3,7 +3,7 @@ from pydantic import BaseModel, field_validator, ConfigDict,Field
 from enum import StrEnum
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+
 
 class EstadoPedido(StrEnum):
     pendiente = "pendiente" #Pendiente de pago, todavia no se pago
