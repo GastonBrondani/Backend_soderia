@@ -31,6 +31,9 @@ from .tipoMovimientoCaja import TipoMovimientoCaja
 from .usuario import Usuario
 from .usuarioRol import UsuarioRol
 from .visita import Visita
+from .combo import Combo
+from .comboProducto import ComboProducto
+from .listaPrecioCombo import ListaPrecioCombo
 
 __all__ = [
     "CajaEmpresa", "CamionReparto", "Cliente", "ClienteCuenta", "ClienteDiaSemana",
@@ -39,5 +42,6 @@ __all__ = [
     "ListaDePrecios", "ListaPrecioProducto", "MedioPago", "MovimientoStock",
     "Pedido", "PedidoProducto", "Persona", "Producto", "ProductoCliente",
     "Recorrido", "RepartoDia", "Rol", "Stock", "TelefonoCliente",
-    "TipoEvento", "TipoMovimientoCaja", "Usuario", "UsuarioRol","Visita"
+    "TipoEvento", "TipoMovimientoCaja", "Usuario", "UsuarioRol","Visita",
+    "Combo", "ComboProducto", "ListaPrecioCombo"
 ]
