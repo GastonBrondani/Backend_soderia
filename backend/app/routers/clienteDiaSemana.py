@@ -47,7 +47,7 @@ class ClientePorDiaItem(BaseModel):
     nombre: Optional[str] = None
     apellido: Optional[str] = None
     turno_visita: Optional[str] = None
-    estado_visita: str
+    estado_visita: Optional[str] = None
 
 class ClientesPorDiaOut(BaseModel):
     fecha: date
@@ -95,9 +95,10 @@ def listar_clientes_por_fecha(
         .where(ClienteDiaSemana.id_dia == id_dia)
         .order_by(
             ClienteDiaSemana.turno_visita,
+            ClienteDiaSemana.orden,
             Persona.apellido,
             Persona.nombre,
-            )
+        )
     )
 
     
@@ -173,7 +174,12 @@ def listar_clientes_por_id_dia(
         .outerjoin(Persona, Persona.dni == Cliente.dni)
         .join(DiaSemana, DiaSemana.id_dia == ClienteDiaSemana.id_dia)
         .where(ClienteDiaSemana.id_dia == id_dia)
-        .order_by(ClienteDiaSemana.turno_visita, Persona.apellido, Persona.nombre)
+        .order_by(
+            ClienteDiaSemana.turno_visita,
+            ClienteDiaSemana.orden,
+            Persona.apellido,
+            Persona.nombre,
+        )
     )
 
     if turno:

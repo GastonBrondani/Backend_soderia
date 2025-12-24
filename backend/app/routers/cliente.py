@@ -77,85 +77,6 @@ def _idx_dias(db: Session) -> Dict[str, int]:
 def _calcular_orden_y_correr(
     db: Session,
     id_dia: int,
-    turno_val: Optional[str],       # "manana"|"tarde"|"noche"|None
-    posicion: str,                  # "inicio"|"final"|"despues"
-    despues_de_legajo: Optional[int] = None,
-) -> int:
-    """
-    Devuelve el orden a asignar al nuevo registro y corre los existentes de ser necesario.
-    Bloquea el conjunto (día/turno) para evitar carreras.
-    """
-    # Filtro base por día y turno (permitiendo NULL)
-    filtro_base = and_(
-        ClienteDiaSemana.id_dia == id_dia,
-        ClienteDiaSemana.turno_visita.is_(None) if turno_val is None else ClienteDiaSemana.turno_visita == turno_val,
-    )
-
-    # Lock del set afectado
-    db.execute(select(ClienteDiaSemana.id_cliente).where(filtro_base).with_for_update())
-
-    if posicion == "inicio":
-        # Todos +1, nuevo en 1
-        db.execute(
-            update(ClienteDiaSemana)
-            .where(filtro_base)
-            .values(orden=func.coalesce(ClienteDiaSemana.orden, 0) + 1)
-        )
-        return 1
-
-    if posicion == "final":
-        max_orden = db.execute(
-            select(func.coalesce(func.max(ClienteDiaSemana.orden), 0)).where(filtro_base)
-        ).scalar_one()
-        return max_orden + 1
-
-    # posicion == "despues"
-    if not despues_de_legajo:
-        raise HTTPException(status_code=400, detail="Falta 'despues_de_legajo' para posicion='despues'.")
-
-    ref_orden = db.execute(
-        select(ClienteDiaSemana.orden).where(
-            and_(filtro_base, ClienteDiaSemana.id_cliente == despues_de_legajo)
-        )
-    ).scalar_one_or_none()
-
-    if ref_orden is None:
-        raise HTTPException(status_code=404, detail="Cliente de referencia no existe en ese día/turno.")
-
-    db.execute(
-        update(ClienteDiaSemana)
-        .where(and_(filtro_base, ClienteDiaSemana.orden > ref_orden))
-        .values(orden=ClienteDiaSemana.orden + 1)
-    )
-    return ref_orden + 1
-
-
-def _idx_dias(db: Session) -> Dict[str, int]:
-    """Devuelve {'lun': id_dia, ...} en base a tabla dia_semana."""
-    dias_db = db.execute(select(DiaSemana)).scalars().all()
-    idx: Dict[str, int] = {}
-    for d in dias_db:
-        nombre = (d.nombre_dia or "").strip().lower()
-        if nombre.startswith("lu"):
-            idx["lun"] = d.id_dia
-        elif nombre.startswith("ma") and "r" in nombre:
-            idx["mar"] = d.id_dia
-        elif nombre.startswith("mi"):
-            idx["mie"] = d.id_dia
-        elif nombre.startswith("ju"):
-            idx["jue"] = d.id_dia
-        elif nombre.startswith("vi"):
-            idx["vie"] = d.id_dia
-        elif nombre.startswith("sa"):
-            idx["sab"] = d.id_dia
-        elif nombre.startswith("do"):
-            idx["dom"] = d.id_dia
-    return idx
-
-
-def _calcular_orden_y_correr(
-    db: Session,
-    id_dia: int,
     turno_val: Optional[str],  # "manana"|"tarde"|"noche"|None
     posicion: str,  # "inicio"|"final"|"despues"
     despues_de_legajo: Optional[int] = None,
@@ -213,10 +134,13 @@ def _calcular_orden_y_correr(
 
     db.execute(
         update(ClienteDiaSemana)
-        .where(and_(filtro_base, ClienteDiaSemana.orden > ref_orden))
+        .where(and_(
+            filtro_base,
+            ClienteDiaSemana.orden >= ref_orden + 1,
+        ))
         .values(orden=ClienteDiaSemana.orden + 1)
     )
-    return ref_orden + 1
+
 
 
 @router.post("/", response_model=ClienteDetalleOut, status_code=status.HTTP_201_CREATED)
@@ -464,15 +388,6 @@ def BorrarCliente(legajo: int, db: Session = Depends(get_db)):
             detail=f"No se pudo eliminar el cliente (referencias activas): {e}",
         )
     
-@router.get("/", response_model=List[ClienteOut], status_code=status.HTTP_200_OK)
-def ListarClientes(db: Session = Depends(get_db)):
-    clientes = (
-        db.query(Cliente)
-        .options(selectinload(Cliente.persona))
-        .filter(Cliente.id_empresa == 1)
-        .all()
-    )
-    return clientes
 
 #------------------------------------EMMA------------------------------------------------
 @router.get(

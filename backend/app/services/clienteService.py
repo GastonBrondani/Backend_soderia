@@ -1,7 +1,7 @@
-from sqlalchemy import select, delete
+from sqlalchemy import func, select, delete, update
 from sqlalchemy.orm import Session, joinedload, selectinload
 from fastapi import HTTPException
-from typing import Any
+from typing import Any, Optional
 
 
 #Modelos utilizados
@@ -214,7 +214,6 @@ class ClienteService:
 
         # 7) Días de visita: borramos todos y reinsertamos
         if data.dias_semanas is not None:
-            # snapshot "antes"
             dias_antes = [
                 {
                     "id_dia": ds.id_dia,
@@ -231,30 +230,31 @@ class ClienteService:
             )
 
             dias_despues = []
-            if data.dias_semanas:
-                for item in data.dias_semanas:
-                    payload = item.model_dump(exclude_unset=True)
-                    nuevo = ClienteDiaSemana(
-                        id_cliente=cliente.legajo,
-                        id_dia=payload["id_dia"],
-                        turno_visita=payload.get("turno_visita"),
-                        orden=payload.get("orden"),
-                    )
-                    dias_despues.append(
-                        {
-                            "id_dia": nuevo.id_dia,
-                            "turno_visita": nuevo.turno_visita,
-                            "orden": nuevo.orden,
-                        }
-                    )
-                    db.add(nuevo)
+            for item in data.dias_semanas:
+                payload = item.model_dump(exclude_unset=True)
 
-            # registrar cambios si efectivamente cambió algo
+                nuevo = ClienteDiaSemana(
+                    id_cliente=cliente.legajo,
+                    id_dia=payload["id_dia"],
+                    turno_visita=payload.get("turno_visita"),
+                )
+
+                dias_despues.append(
+                    {
+                        "id_dia": nuevo.id_dia,
+                        "turno_visita": nuevo.turno_visita,
+                        "orden": nuevo.orden,
+                    }
+                )
+
+                db.add(nuevo)
+
             if dias_antes != dias_despues:
                 cambios["dias_semanas"] = {
                     "antes": dias_antes,
                     "despues": dias_despues,
                 }
+
 
         # Registrar histórico SOLO si hubo cambios
         if cambios:
@@ -268,5 +268,90 @@ class ClienteService:
 
         db.commit()
         db.refresh(cliente)
+        
+        
 
         return ClienteDetalleOut.model_validate(cliente)
+    
+def calcular_orden(
+    db: Session,
+    *,
+    id_dia: int,
+    turno: Optional[str],
+    posicion: str,
+    despues_de_legajo: Optional[int],
+) -> int:
+
+    # 🔒 Lock del conjunto
+    db.execute(
+        select(ClienteDiaSemana.id_cliente)
+        .where(
+            ClienteDiaSemana.id_dia == id_dia,
+            ClienteDiaSemana.turno_visita == turno,
+        )
+        .with_for_update()
+    )
+
+    max_orden = db.execute(
+        select(func.coalesce(func.max(ClienteDiaSemana.orden), 0))
+        .where(
+            ClienteDiaSemana.id_dia == id_dia,
+            ClienteDiaSemana.turno_visita == turno,
+        )
+    ).scalar_one()
+
+    if posicion == "inicio":
+        db.execute(
+            update(ClienteDiaSemana)
+            .where(
+                ClienteDiaSemana.id_dia == id_dia,
+                ClienteDiaSemana.turno_visita == turno,
+            )
+            .values(orden=ClienteDiaSemana.orden + 1)
+        )
+        return 1
+
+    if posicion == "despues":
+        if not despues_de_legajo:
+            raise HTTPException(400, "Falta despues_de_legajo")
+
+        orden_ref = db.execute(
+            select(ClienteDiaSemana.orden)
+            .where(
+                ClienteDiaSemana.id_dia == id_dia,
+                ClienteDiaSemana.id_cliente == despues_de_legajo,
+            )
+            .with_for_update()
+        ).scalar_one()
+
+        # PASO 1: mover temporalmente (evita colisión del índice único)
+        db.execute(
+            update(ClienteDiaSemana)
+            .where(
+                ClienteDiaSemana.id_dia == id_dia,
+                ClienteDiaSemana.turno_visita == turno,
+                ClienteDiaSemana.orden >= orden_ref + 1,
+            )
+            .values(orden=ClienteDiaSemana.orden + 1000)
+        )
+
+        # PASO 2: volver al rango real
+        db.execute(
+            update(ClienteDiaSemana)
+            .where(
+                ClienteDiaSemana.id_dia == id_dia,
+                ClienteDiaSemana.turno_visita == turno,
+                ClienteDiaSemana.orden >= orden_ref + 1001,
+            )
+            .values(orden=ClienteDiaSemana.orden - 999)
+        )
+
+        return orden_ref + 1
+
+
+    # final
+    return max_orden + 1
+
+
+    
+    
