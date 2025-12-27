@@ -118,7 +118,8 @@ def _calcular_orden_y_correr(
     # posicion == "despues"
     if not despues_de_legajo:
         raise HTTPException(
-            status_code=400, detail="Falta 'despues_de_legajo' para posicion='despues'."
+            status_code=400,
+            detail="Falta 'despues_de_legajo' para posicion='despues'."
         )
 
     ref_orden = db.execute(
@@ -129,17 +130,23 @@ def _calcular_orden_y_correr(
 
     if ref_orden is None:
         raise HTTPException(
-            status_code=404, detail="Cliente de referencia no existe en ese día/turno."
+            status_code=404,
+            detail="Cliente de referencia no existe en ese día/turno."
         )
 
     db.execute(
         update(ClienteDiaSemana)
-        .where(and_(
-            filtro_base,
-            ClienteDiaSemana.orden >= ref_orden + 1,
-        ))
+        .where(
+            and_(
+                filtro_base,
+                ClienteDiaSemana.orden >= ref_orden + 1,
+            )
+        )
         .values(orden=ClienteDiaSemana.orden + 1)
     )
+
+    return ref_orden + 1
+
 
 
 

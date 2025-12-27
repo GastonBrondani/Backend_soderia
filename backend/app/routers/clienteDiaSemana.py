@@ -239,7 +239,7 @@ def listar_dias_visita_cliente(
         for r in rows
     ]
 
-#Le asignamos un dia de visita al cliente (Funciona)
+""" #Le asignamos un dia de visita al cliente (Funciona)
 @router.put("/{legajo}/dias-visita", response_model=List[ClienteDiaVisitaOut])
 def upsert_dias_visita_cliente(
     payload: ClienteDiasVisitaUpsert,
@@ -287,7 +287,7 @@ def upsert_dias_visita_cliente(
             turno_visita=r.turno_visita,
         )
         for r in rows
-    ]
+    ] """
 
 #Elimina un dia de visita del cliente (Funciona)
 @router.delete("/{legajo}/dias-visita/{id_dia}", status_code=204)
@@ -317,7 +317,7 @@ def _validar_dias_existen(db: Session, ids: list[int]) -> None:
             detail=f"Días inexistentes: {sorted(faltantes)}",
         )
     
-@router.post("/{legajo}/dias-visita",
+""" @router.post("/{legajo}/dias-visita",
              response_model=List[ClienteDiaVisitaOut],
              status_code=status.HTTP_201_CREATED)
 def agregar_dias_visita_cliente(
@@ -393,4 +393,4 @@ def agregar_dias_visita_cliente(
             turno_visita=r.turno_visita,
         )
         for r in rows
-    ]
+    ] """
