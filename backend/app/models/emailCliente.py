@@ -31,7 +31,7 @@ class MailCliente(Base):
 
     #Relaciones
     cliente: Mapped["Cliente"] = relationship(
-        "Cliente",back_populates="emails",lazy="selectin"
+        "Cliente",back_populates="emails"
     )
 
     def __repr__(self) -> str:

@@ -43,11 +43,11 @@ class Historico(Base):
 
     #Relaciones
     cliente: Mapped["Cliente"] = relationship(
-        "Cliente", back_populates="historicos", lazy="selectin"
+        "Cliente", back_populates="historicos"
     )
     
     tipo_evento: Mapped["TipoEvento"] = relationship(
-        "TipoEvento", back_populates="historicos", lazy="selectin"
+        "TipoEvento", back_populates="historicos"
     )
 
     def __repr__(self) -> str:

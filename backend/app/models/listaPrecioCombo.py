@@ -18,5 +18,5 @@ class ListaPrecioCombo(Base):
 
     precio: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
 
-    lista: Mapped["ListaDePrecios"] = relationship("ListaDePrecios", back_populates="listas_precios_combos", lazy="selectin")
-    combo: Mapped["Combo"] = relationship("Combo", back_populates="listas_precios", lazy="selectin")
+    lista: Mapped["ListaDePrecios"] = relationship("ListaDePrecios", back_populates="listas_precios_combos")
+    combo: Mapped["Combo"] = relationship("Combo", back_populates="listas_precios")

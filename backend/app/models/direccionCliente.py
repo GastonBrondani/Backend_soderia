@@ -36,7 +36,7 @@ class DireccionCliente(Base):
 
     #Relaciones
     cliente: Mapped["Cliente"] = relationship(
-        "Cliente",back_populates="direcciones",lazy="selectin"
+        "Cliente",back_populates="direcciones"
     )
 
     def __repr__(self) -> str:

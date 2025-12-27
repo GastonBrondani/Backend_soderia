@@ -42,19 +42,19 @@ class Recorrido(Base):
 
     #Relaciones
     empleado: Mapped["Empleado"] = relationship(
-        "Empleado", back_populates="recorrido", lazy="selectin"
+        "Empleado", back_populates="recorrido"
     )
 
     reparto_dia: Mapped["RepartoDia"] = relationship(
-        "RepartoDia", back_populates="recorridos", lazy="selectin"
+        "RepartoDia", back_populates="recorridos"
     )
 
     camion_reparto: Mapped["CamionReparto"] = relationship(
-        "CamionReparto", back_populates="recorridos", lazy="selectin"
+        "CamionReparto", back_populates="recorridos"
     )
     
     movimientos_stock: Mapped[List["MovimientoStock"]] = relationship(
-        "MovimientoStock", back_populates="recorrido", lazy="selectin"
+        "MovimientoStock", back_populates="recorrido"
     )
 
     def __repr__(self) -> str:

@@ -24,10 +24,10 @@ class MedioPago(Base):
 
     #Relaciones
     caja_empresa: Mapped["CajaEmpresa"] = relationship(
-        "CajaEmpresa", back_populates="medio_pago", lazy="selectin"
+        "CajaEmpresa", back_populates="medio_pago"
     )
     pedido: Mapped["Pedido"] = relationship(
-        "Pedido", back_populates="medio_pagos", lazy="selectin"
+        "Pedido", back_populates="medio_pagos"
     )
 
     def __repr__(self) -> str:

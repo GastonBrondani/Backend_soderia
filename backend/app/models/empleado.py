@@ -41,15 +41,15 @@ class Empleado(Base):
 
     #Relaciones
     persona: Mapped["Persona"] = relationship(
-        "Persona",back_populates="empleado",lazy="selectin"
+        "Persona",back_populates="empleado"
     )
     
     recorrido: Mapped["Recorrido"] = relationship(
-        "Recorrido", back_populates="empleado", lazy="selectin"
+        "Recorrido", back_populates="empleado"
     )
     
     usuarios: Mapped["Usuario"] = relationship(
-        "Usuario",back_populates="empleado",lazy="selectin"
+        "Usuario",back_populates="empleado"
     )
 
     empresa: Mapped["Empresa"] = relationship("Empresa", back_populates="empleados")

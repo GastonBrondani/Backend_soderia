@@ -17,5 +17,5 @@ class ComboProducto(Base):
 
     cantidad: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    combo: Mapped["Combo"] = relationship("Combo", back_populates="combos_productos", lazy="selectin")
-    producto: Mapped["Producto"] = relationship("Producto", back_populates="combos_productos", lazy="selectin")
+    combo: Mapped["Combo"] = relationship("Combo", back_populates="combos_productos")
+    producto: Mapped["Producto"] = relationship("Producto", back_populates="combos_productos")

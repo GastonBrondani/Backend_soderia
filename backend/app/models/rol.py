@@ -24,7 +24,7 @@ class Rol(Base):
 
     #Relaciones
     usuarios_rol: Mapped["UsuarioRol"] = relationship(
-        "UsuarioRol", back_populates="rol", lazy="selectin"
+        "UsuarioRol", back_populates="rol"
     )
 
     def __repr__(self) -> str:

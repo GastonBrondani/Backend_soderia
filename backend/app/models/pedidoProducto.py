@@ -27,9 +27,9 @@ class PedidoProducto(Base):
     cantidad: Mapped[int] = mapped_column(Integer, nullable=False)
     precio_unitario: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
 
-    pedido: Mapped["Pedido"] = relationship("Pedido", back_populates="pedidos_productos", lazy="selectin")
-    producto: Mapped[Optional["Producto"]] = relationship("Producto", back_populates="pedidos_productos", lazy="selectin")
-    combo: Mapped[Optional["Combo"]] = relationship("Combo", back_populates="pedidos_productos", lazy="selectin")
+    pedido: Mapped["Pedido"] = relationship("Pedido", back_populates="pedidos_productos")
+    producto: Mapped[Optional["Producto"]] = relationship("Producto", back_populates="pedidos_productos")
+    combo: Mapped[Optional["Combo"]] = relationship("Combo", back_populates="pedidos_productos")
 
     def __repr__(self) -> str:
         ref = f"producto={self.id_producto}" if self.id_producto is not None else f"combo={self.id_combo}"

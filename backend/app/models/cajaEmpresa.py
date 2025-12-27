@@ -62,13 +62,13 @@ class CajaEmpresa(Base):
 
     #Relaciones.
     empresa: Mapped["Empresa"] = relationship(
-        "Empresa", back_populates="caja_empresas", lazy="selectin"
+        "Empresa", back_populates="caja_empresas"
     )
     tipo_movimiento: Mapped[List["TipoMovimientoCaja"]] = relationship(
-        "TipoMovimientoCaja", back_populates="caja_empresa", lazy="selectin"
+        "TipoMovimientoCaja", back_populates="caja_empresa"
     )
     medio_pago: Mapped[List["MedioPago"]] = relationship(
-        "MedioPago", back_populates="caja_empresa", lazy="selectin"
+        "MedioPago", back_populates="caja_empresa"
     )
 
     def __repr__(self) -> str:

@@ -464,15 +464,6 @@ def BorrarCliente(legajo: int, db: Session = Depends(get_db)):
             detail=f"No se pudo eliminar el cliente (referencias activas): {e}",
         )
     
-@router.get("/", response_model=List[ClienteOut], status_code=status.HTTP_200_OK)
-def ListarClientes(db: Session = Depends(get_db)):
-    clientes = (
-        db.query(Cliente)
-        .options(selectinload(Cliente.persona))
-        .filter(Cliente.id_empresa == 1)
-        .all()
-    )
-    return clientes
 
 #------------------------------------EMMA------------------------------------------------
 @router.get(

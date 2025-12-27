@@ -33,13 +33,13 @@ class CamionReparto(Base):
     empresa: Mapped["Empresa"] = relationship(
         "Empresa",
         back_populates="camiones_reparto",
-        lazy="selectin"
+        
     )
     
     recorridos: Mapped["Recorrido"] = relationship(
         "Recorrido",
         back_populates="camion_reparto",
-        lazy="selectin",
+        
         
     )
 

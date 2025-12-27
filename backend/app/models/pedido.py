@@ -53,24 +53,24 @@ class Pedido(Base):
 
     #Relaciones
     cliente: Mapped["Cliente"] = relationship(
-        "Cliente", back_populates="pedidos", lazy="selectin"
+        "Cliente", back_populates="pedidos"
         )
     medio_pagos: Mapped[List["MedioPago"]] = relationship(
-        "MedioPago", back_populates="pedido", lazy="selectin"
+        "MedioPago", back_populates="pedido"
     )
     
     empresa: Mapped["Empresa"] = relationship(
-        "Empresa", back_populates="pedidos", lazy="selectin"
+        "Empresa", back_populates="pedidos"
     )
 
     movimientos_stock: Mapped[List["MovimientoStock"]] = relationship(
-        "MovimientoStock", back_populates="pedido", lazy="selectin"
+        "MovimientoStock", back_populates="pedido"
     )
     pedidos_productos: Mapped[List["PedidoProducto"]] = relationship(
-        "PedidoProducto", back_populates="pedido", lazy="selectin"
+        "PedidoProducto", back_populates="pedido"
     )
     reparto_dia: Mapped[Optional["RepartoDia"]] = relationship(
-    "RepartoDia", back_populates="pedidos", lazy="selectin"
+    "RepartoDia", back_populates="pedidos"
     )
 
     def __repr__(self) -> str:

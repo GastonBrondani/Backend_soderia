@@ -30,30 +30,30 @@ class Empresa(Base):
 
     #Relaciones
     caja_empresas: Mapped[List["CajaEmpresa"]] = relationship(
-        "CajaEmpresa", back_populates="empresa", lazy="selectin"
+        "CajaEmpresa", back_populates="empresa"
     )
     camiones_reparto: Mapped[List["CamionReparto"]] = relationship(
-        "CamionReparto", back_populates="empresa", lazy="selectin"
+        "CamionReparto", back_populates="empresa"
     )
     clientes: Mapped[List["Cliente"]] = relationship(
-        "Cliente", back_populates="empresa", lazy="selectin"
+        "Cliente", back_populates="empresa"
     )
     empleados: Mapped[List["Empleado"]] = relationship(
-        "Empleado", back_populates="empresa", lazy="selectin"
+        "Empleado", back_populates="empresa"
     )
     cuentas_bancarias: Mapped[List["CuentaBancariaEmpresa"]] = relationship(
-        "CuentaBancariaEmpresa", back_populates="empresa", lazy="selectin"
+        "CuentaBancariaEmpresa", back_populates="empresa"
     )
     pedidos: Mapped[List["Pedido"]] = relationship(
-        "Pedido", back_populates="empresa", lazy="selectin"
+        "Pedido", back_populates="empresa"
     )
     repartos_dias: Mapped[List["RepartoDia"]] = relationship(
-        "RepartoDia", back_populates="empresa", lazy="selectin"
+        "RepartoDia", back_populates="empresa"
     )
     stocks: Mapped[List["Stock"]] = relationship(
-        "Stock", back_populates="empresa", lazy="selectin"
+        "Stock", back_populates="empresa"
     )
-    combos = relationship("Combo", back_populates="empresa", lazy="selectin")
+    combos = relationship("Combo", back_populates="empresa")
 
 
     def __repr__(self) -> str:

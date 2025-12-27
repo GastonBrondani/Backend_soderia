@@ -35,19 +35,19 @@ class Usuario(Base):
 
     #Relaciones
     empleado: Mapped["Empleado"] = relationship(
-        "Empleado",back_populates="usuarios",lazy="selectin"
+        "Empleado",back_populates="usuarios"
     )
 
     cliente: Mapped["Cliente"] = relationship(
-        "Cliente",back_populates="usuario",lazy="selectin"
+        "Cliente",back_populates="usuario"
     )
 
     reparto_dia: Mapped["RepartoDia"] = relationship(
-        "RepartoDia", back_populates="usuario", lazy="selectin"
+        "RepartoDia", back_populates="usuario"
     )
 
     usuario_roles: Mapped[List["UsuarioRol"]] = relationship(
-        "UsuarioRol",back_populates="usuario",lazy="selectin"
+        "UsuarioRol",back_populates="usuario"
     )
 
     def __repr__(self) -> str:

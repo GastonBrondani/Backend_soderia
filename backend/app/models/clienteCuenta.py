@@ -39,7 +39,7 @@ class ClienteCuenta(Base):
 
     #Relación
     cliente: Mapped["Cliente"] = relationship(
-        "Cliente", back_populates="cuentas", lazy="selectin"
+        "Cliente", back_populates="cuentas"
     )
 
     def __repr__(self) -> str:
