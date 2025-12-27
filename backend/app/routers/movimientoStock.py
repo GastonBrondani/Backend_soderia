@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -39,3 +39,22 @@ def crear(payload: MovimientoCreate, db: Session = Depends(get_db)):
         .limit(2)
     ).scalars().all()
     return rows
+
+@router.get("/", response_model=list[MovimientoOut])
+def listar(
+    db: Session = Depends(get_db),
+    id_producto: int | None = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+):
+    stmt = select(MovimientoStock)
+    if id_producto:
+        stmt = stmt.where(MovimientoStock.id_producto == id_producto)
+
+    return (
+        db.execute(
+            stmt.order_by(MovimientoStock.fecha.desc()).limit(limit)
+        )
+        .scalars()
+        .all()
+    )
+
