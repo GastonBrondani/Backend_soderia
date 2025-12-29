@@ -33,22 +33,22 @@ class Producto(Base):
 
     #Relaciones
     listas_precios: Mapped[List["ListaPrecioProducto"]] = relationship(
-        "ListaPrecioProducto", back_populates="producto", lazy="selectin"
+        "ListaPrecioProducto", back_populates="producto"
     )
     movimientos_stock: Mapped[List["MovimientoStock"]] = relationship(
-        "MovimientoStock", back_populates="producto", lazy="selectin"
+        "MovimientoStock", back_populates="producto"
     )
 
     pedidos_productos: Mapped[List["PedidoProducto"]] = relationship(
-        "PedidoProducto", back_populates="producto", lazy="selectin"
+        "PedidoProducto", back_populates="producto"
     )
     productos_cliente: Mapped[List["ProductoCliente"]] = relationship(
-        "ProductoCliente", back_populates="producto", lazy="selectin"
+        "ProductoCliente", back_populates="producto"
     )
     stocks: Mapped[List["Stock"]] = relationship(
-        "Stock", back_populates="producto", lazy="selectin"
+        "Stock", back_populates="producto"
     )
-    combos_productos: Mapped[List["ComboProducto"]] = relationship("ComboProducto", back_populates="producto", lazy="selectin")
+    combos_productos: Mapped[List["ComboProducto"]] = relationship("ComboProducto", back_populates="producto")
     descuenta_stock: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

@@ -36,10 +36,10 @@ class ListaPrecioProducto(Base):
 
     #Relaciones
     lista: Mapped["ListaDePrecios"] = relationship(
-        "ListaDePrecios",back_populates="lista_productos",lazy="selectin"
+        "ListaDePrecios",back_populates="lista_productos"
     )
     producto: Mapped["Producto"] = relationship(
-        "Producto",back_populates="listas_precios",lazy="selectin"
+        "Producto",back_populates="listas_precios"
     )
 
     def __repr__(self) -> str:

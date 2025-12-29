@@ -30,10 +30,10 @@ class UsuarioRol(Base):
 
     #Relaciones
     usuario: Mapped["Usuario"] = relationship(
-        "Usuario", back_populates="usuario_roles", lazy="selectin"
+        "Usuario", back_populates="usuario_roles"
     )
     rol: Mapped[List["Rol"]] = relationship(
-        "Rol", back_populates="usuarios_rol", lazy="selectin"
+        "Rol", back_populates="usuarios_rol"
     )
 
     def __repr__(self) -> str:

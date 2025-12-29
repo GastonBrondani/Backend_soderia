@@ -33,9 +33,9 @@ class ListaDePrecios(Base):
 
     #Relaciones
     lista_productos: Mapped[List["ListaPrecioProducto"]] = relationship(
-        "ListaPrecioProducto",back_populates="lista",lazy="selectin"
+        "ListaPrecioProducto",back_populates="lista"
     )
-    listas_precios_combos: Mapped[List["ListaPrecioCombo"]] = relationship("ListaPrecioCombo", back_populates="lista", lazy="selectin")
+    listas_precios_combos: Mapped[List["ListaPrecioCombo"]] = relationship("ListaPrecioCombo", back_populates="lista")
 
 
     def __repr__(self) -> str:

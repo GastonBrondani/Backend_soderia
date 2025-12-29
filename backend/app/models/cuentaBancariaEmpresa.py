@@ -35,7 +35,7 @@ class CuentaBancariaEmpresa(Base):
 
     #Relación
     empresa: Mapped["Empresa"] = relationship(
-        "Empresa",back_populates="cuentas_bancarias",lazy="selectin"
+        "Empresa",back_populates="cuentas_bancarias"
     )
 
     def __repr__(self) -> str:

@@ -43,22 +43,21 @@ class RepartoDia(Base):
 
     #Relaciones
     empresa: Mapped["Empresa"] = relationship(
-        "Empresa", back_populates="repartos_dias", lazy="selectin"
+        "Empresa", back_populates="repartos_dias"
     )
     usuario: Mapped["Usuario"] = relationship(
-        "Usuario", back_populates="reparto_dia", lazy="selectin"
+        "Usuario", back_populates="reparto_dia"
     )
     reparto_clientes: Mapped[List["ClienteRepartoDia"]] = relationship(
-        "ClienteRepartoDia", back_populates="reparto_dia", lazy="selectin"
+        "ClienteRepartoDia", back_populates="reparto_dia"
     )
     recorridos: Mapped[List["Recorrido"]] = relationship(
-        "Recorrido", back_populates="reparto_dia", lazy="selectin"
+        "Recorrido", back_populates="reparto_dia"
     )
     pedidos: Mapped[List["Pedido"]] = relationship(
     "Pedido",
     back_populates="reparto_dia",
-    passive_deletes=True,
-    lazy="selectin",
+    passive_deletes=True
     )
 
     def __repr__(self) -> str:

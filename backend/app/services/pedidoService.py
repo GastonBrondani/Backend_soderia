@@ -13,16 +13,18 @@ from app.models.repartoDia import RepartoDia
 from app.models.pedidoProducto import PedidoProducto
 from app.models.movimientoStock import MovimientoStock        
 from app.models.stock import Stock
-from app.models.producto import Producto                           
+from app.models.producto import Producto   
+from app.models.visita import Visita                        
 #from app.models.recorrido import Recorrido Ver despues como implementar
 
 
-from app.schemas.pedido import PedidoOut, PedidoCreate, PedidoConfirmarIn, PedidoCancelarDeudaIn
+from app.schemas.pedido import PedidoOut, PedidoCreate, PedidoConfirmarIn, PedidoCancelarDeudaIn,EstadoPedido
 from app.schemas.clienteCuenta import ClienteCuentaOut
 from app.schemas.enumsStock import TipoMovimiento
 
 from app.services.clienteRepartoDiaService import ClienteRepartoDiaService
 from app.services.pagoService import PagoService
+
 
 TWOPLACES = Decimal("0.01")
 
@@ -38,24 +40,64 @@ def _bucket_medio_pago(nombre: str) -> str:
         return "virtual"
     raise HTTPException(status_code=400, detail=f"medio_pago no soportado: {nombre!r}")
 
+# helper: aplicar el CARGO del pedido a la cuenta (sin pago)
+def _aplicar_compra_a_cuenta(cuenta: ClienteCuenta, total: Decimal) -> None:
+    total = _q2(total)
+    if total < 0:
+        raise HTTPException(status_code=400, detail="monto_total no puede ser negativo.")
+
+    deuda = _q2(cuenta.deuda or Decimal("0"))
+    saldo = _q2(cuenta.saldo or Decimal("0"))
+
+    # Consumir saldo a favor primero
+    if saldo >= total:
+        saldo = saldo - total
+    else:
+        faltante = total - saldo
+        saldo = Decimal("0")
+        deuda = deuda + faltante
+
+    cuenta.saldo = _q2(saldo)
+    cuenta.deuda = _q2(deuda)
+
 class PedidoService:   
 
     @staticmethod
     def confirmar_pedido(db: Session, id_pedido: int, data: PedidoConfirmarIn) -> PedidoOut:
         with db.begin():
-            # 1) Traer pedido y bloquear (evita doble confirmación)
+            now = datetime.now()
+
+            # 1) Traer pedido y bloquear
             ped = db.execute(
                 select(Pedido).where(Pedido.id_pedido == id_pedido).with_for_update()
             ).scalar_one_or_none()
             if ped is None:
                 raise HTTPException(status_code=404, detail="Pedido no encontrado")
+            
 
-            if ped.estado == "confirmado":
-                raise HTTPException(status_code=409, detail="El pedido ya está confirmado")
             if ped.id_medio_pago is None:
                 raise HTTPException(status_code=400, detail="El pedido no tiene medio de pago")
 
-            # 2) Traer reparto_dia y bloquear
+            total = _q2(ped.monto_total or Decimal("0"))
+            abonado = _q2(ped.monto_abonado or Decimal("0"))
+
+            if total <= 0:
+                raise HTTPException(status_code=400, detail="El pedido no tiene monto_total válido (> 0).")
+            if abonado < 0:
+                raise HTTPException(status_code=400, detail="monto_abonado no puede ser negativo.")
+
+            # 2) Bloquear cuenta (antes que reparto, para no deadlockear con PagoService)
+            cuenta = db.execute(
+                select(ClienteCuenta)
+                .where(ClienteCuenta.legajo == ped.legajo)
+                .with_for_update()
+            ).scalar_one_or_none()
+            if cuenta is None:
+                raise HTTPException(status_code=409, detail="El cliente no tiene cuenta creada.")
+
+            saldo_antes = _q2(cuenta.saldo or Decimal("0"))
+
+            # 3) Traer reparto_dia y bloquear
             rep = db.execute(
                 select(RepartoDia)
                 .where(RepartoDia.id_repartodia == data.id_repartodia)
@@ -64,33 +106,110 @@ class PedidoService:
             if rep is None:
                 raise HTTPException(status_code=404, detail="Reparto del día no encontrado")
 
-            # (opcional) validar empresa
             if hasattr(rep, "id_empresa") and hasattr(ped, "id_empresa") and rep.id_empresa != ped.id_empresa:
                 raise HTTPException(status_code=409, detail="El pedido y el reparto pertenecen a empresas distintas")
 
-            # ✅ NUEVO: crear pago si corresponde (y evitar duplicado)
-            abonado = _q2(ped.monto_abonado)
+            # 4) STOCK + MovimientoStock (solo al confirmar)
+            items = db.execute(
+                select(PedidoProducto)
+                .where(PedidoProducto.id_pedido == ped.id_pedido)
+                .order_by(PedidoProducto.id_producto)
+            ).scalars().all()
+
+            # evitar duplicar movimientos si reintentan
+            ya_mov = db.execute(
+                select(MovimientoStock).where(MovimientoStock.id_pedido == ped.id_pedido)
+            ).first()
+            if ya_mov:
+                raise HTTPException(status_code=409, detail="Ya existen movimientos de stock para este pedido.")
+
+            fecha_mov = getattr(ped, "fecha", None) or now
+
+            for it in items:
+                prod = db.get(Producto, it.id_producto)
+                if prod is None:
+                    raise HTTPException(status_code=400, detail=f"Producto {it.id_producto} inexistente.")
+
+                if not prod.descuenta_stock:
+                    continue
+
+                cantidad = _q2(Decimal(it.cantidad))
+
+                stock_row = db.execute(
+                    select(Stock)
+                    .where(
+                        Stock.id_empresa == ped.id_empresa,
+                        Stock.id_producto == it.id_producto,
+                    )
+                    .with_for_update()
+                ).scalar_one_or_none()
+                if stock_row is None:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"No hay stock configurado para producto {it.id_producto} en empresa {ped.id_empresa}.",
+                    )
+
+                stock_actual = _q2(stock_row.cantidad or Decimal("0"))
+                if stock_actual < cantidad:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"Stock insuficiente producto {it.id_producto}. Disponible: {stock_actual}, requerido: {cantidad}.",
+                    )
+
+                stock_row.cantidad = _q2(stock_actual - cantidad)
+
+                db.add(MovimientoStock(
+                    id_producto=it.id_producto,
+                    id_pedido=ped.id_pedido,
+                    fecha=fecha_mov,
+                    tipo_movimiento=TipoMovimiento.egreso,
+                    cantidad=cantidad,
+                    observacion=f"Venta pedido {ped.id_pedido} (confirmado)",
+                ))
+
+            # 5) CARGO del pedido a la cuenta (acá recién impacta)
+            _aplicar_compra_a_cuenta(cuenta, total)
+
+            # 6) Registrar pago (si corresponde) -> esto aplica pago a cuenta + caja + reparto
             if abonado > 0:
-                ya = db.execute(
+                ya_pago = db.execute(
                     select(Pago.id_pago).where(Pago.id_pedido == ped.id_pedido)
                 ).first()
-                if ya:
+                if ya_pago:
                     raise HTTPException(status_code=409, detail="Ya existe un pago registrado para este pedido.")
 
                 PagoService.crear(
                     db,
                     id_empresa=ped.id_empresa,
                     id_medio_pago=ped.id_medio_pago,
-                    fecha=datetime.now(),
+                    fecha=now,
                     monto=abonado,
                     tipo_pago="COBRO_PEDIDO",
                     observacion=ped.observacion,
                     legajo=ped.legajo,
                     id_pedido=ped.id_pedido,
                     id_repartodia=data.id_repartodia,
+                    impactar_cuenta=True,
+                    impactar_reparto=True,
                 )
 
-            # 5) Volcar info del pedido a cliente_reparto_dia
+            # 7) EstadoPedido (SIN usar "confirmado")
+            # lógica: con lo disponible (saldo previo + abonado) ¿cubre el total?
+            pago_disponible = saldo_antes + abonado
+
+            if pago_disponible <= 0:
+                ped.estado = EstadoPedido.pendiente
+            elif pago_disponible < total:
+                ped.estado = EstadoPedido.abonado_parcialmente
+            else:
+                # está cubierto; si al final el saldo subió vs saldo_antes => cliente pagó de más
+                saldo_despues = _q2(cuenta.saldo or Decimal("0"))
+                if saldo_despues > saldo_antes:
+                    ped.estado = EstadoPedido.cliente_pago_de_mas
+                else:
+                    ped.estado = EstadoPedido.abonado
+
+            # 8) cliente_reparto_dia
             ClienteRepartoDiaService.upsert_desde_pedido(
                 db=db,
                 id_repartodia=data.id_repartodia,
@@ -100,8 +219,20 @@ class PedidoService:
                 bidones_entregado=None,
             )
 
-            # 6) Enlazar y cerrar
-            ped.id_repartodia = data.id_repartodia            
+            # 9) visita
+            fecha_visita = (
+                datetime.combine(rep.fecha, now.time())
+                if hasattr(rep, "fecha") and rep.fecha
+                else now
+            )
+            db.add(Visita(
+                legajo=ped.legajo,
+                fecha=fecha_visita,
+                estado="cliente_compra",
+            ))
+
+            # 10) Enlazar reparto y cerrar
+            ped.id_repartodia = data.id_repartodia
 
             db.flush()
             return PedidoOut.model_validate(ped)
@@ -135,35 +266,7 @@ class PedidoService:
                 ).scalar_one_or_none()
                 if mp is None:
                     raise HTTPException(status_code=400, detail="id_medio_pago inexistente.")
-
-                # 2) Bloquear/traer cuenta del cliente
-                cuenta = db.execute(
-                    select(ClienteCuenta)
-                    .where(ClienteCuenta.legajo == pedido_create.legajo)
-                    .with_for_update()
-                ).scalar_one_or_none()
-                if cuenta is None:
-                    raise HTTPException(status_code=409, detail="El cliente no tiene cuenta creada.")
-
-                # 3) Ajustar deuda / saldo
-                deuda_actual = _q2(cuenta.deuda or Decimal("0"))
-                saldo_actual = _q2(cuenta.saldo or Decimal("0"))
-
-                if abonado < Decimal("0"):
-                    raise HTTPException(status_code=400, detail="monto_abonado no puede ser negativo.")
-
-                pago_disponible = saldo_actual + abonado
-                deuda_total = deuda_actual + total
-
-                if pago_disponible >= deuda_total:
-                    deuda_nueva = Decimal("0")
-                    saldo_nuevo = pago_disponible - deuda_total
-                else:
-                    deuda_nueva = deuda_total - pago_disponible
-                    saldo_nuevo = Decimal("0")
-
-                cuenta.deuda = _q2(deuda_nueva)
-                cuenta.saldo = _q2(saldo_nuevo)
+                
 
                 # 4) Crear pedido (guardamos lo que vino del front)
                 nuevo = Pedido(
@@ -179,17 +282,23 @@ class PedidoService:
                 db.add(nuevo)
                 db.flush()  # necesitamos nuevo.id_pedido
 
-                # 5) Items: siempre pedido_producto, stock solo si descuenta_stock = True
+                # 3) Items: siempre pedido_producto (SIN tocar stock acá)
                 if items:
                     total_items = Decimal("0")
 
                     for item in items:
                         cantidad = _q2(item.cantidad)
                         precio_unitario = _q2(item.precio_unitario)
-
                         total_items += cantidad * precio_unitario
 
-                        # 5.1) siempre guardamos detalle en pedido_producto
+                        # (recomendado) validar que exista el producto
+                        prod = db.get(Producto, item.id_producto)
+                        if prod is None:
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"Producto {item.id_producto} inexistente.",
+                            )
+
                         pp = PedidoProducto(
                             id_pedido=nuevo.id_pedido,
                             id_producto=item.id_producto,
@@ -198,62 +307,6 @@ class PedidoService:
                             precio_unitario=str(precio_unitario),
                         )
                         db.add(pp)
-
-                        # 5.2) traemos el producto para ver si descuenta stock
-                        prod = db.get(Producto, item.id_producto)
-                        if prod is None:
-                            raise HTTPException(
-                                status_code=400,
-                                detail=f"Producto {item.id_producto} inexistente.",
-                            )
-
-                        # Si NO descuenta stock (ej: bidón retornable), no tocamos stock ni movimiento
-                        if not prod.descuenta_stock:
-                            continue
-
-                        # 5.3) actualizar STOCK (empresa + producto)
-                        stock_row = db.execute(
-                            select(Stock)
-                            .where(
-                                Stock.id_empresa == pedido_create.id_empresa,
-                                Stock.id_producto == item.id_producto,
-                            )
-                            .with_for_update()
-                        ).scalar_one_or_none()
-
-                        if stock_row is None:
-                            raise HTTPException(
-                                status_code=409,
-                                detail=(
-                                    f"No hay stock configurado para el producto "
-                                    f"{item.id_producto} en la empresa {pedido_create.id_empresa}."
-                                ),
-                            )
-
-                        stock_actual = _q2(stock_row.cantidad or Decimal("0"))
-
-                        if stock_actual < cantidad:
-                            raise HTTPException(
-                                status_code=409,
-                                detail=(
-                                    f"Stock insuficiente para el producto {item.id_producto}. "
-                                    f"Disponible: {stock_actual}, requerido: {cantidad}."
-                                ),
-                            )
-
-                        stock_row.cantidad = _q2(stock_actual - cantidad)
-
-                        # 5.4) Registrar movimiento_stock (EGRESO)
-                        ms = MovimientoStock(
-                            id_producto=item.id_producto,
-                            id_pedido=nuevo.id_pedido,
-                            # id_recorrido lo completás cuando tengas la lógica clara
-                            fecha=pedido_create.fecha,
-                            tipo_movimiento=TipoMovimiento.egreso,
-                            cantidad=cantidad,
-                            observacion=f"Venta pedido {nuevo.id_pedido}",
-                        )
-                        db.add(ms)
 
                     total_items = _q2(total_items)
                     if total_items != total:

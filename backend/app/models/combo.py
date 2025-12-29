@@ -21,13 +21,13 @@ class Combo(Base):
     descripcion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     estado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
 
-    empresa: Mapped["Empresa"] = relationship("Empresa", back_populates="combos", lazy="selectin")
+    empresa: Mapped["Empresa"] = relationship("Empresa", back_populates="combos")
     combos_productos: Mapped[List["ComboProducto"]] = relationship(
-        "ComboProducto", back_populates="combo", cascade="all, delete-orphan", lazy="selectin"
+        "ComboProducto", back_populates="combo", cascade="all, delete-orphan"
     )
     listas_precios: Mapped[List["ListaPrecioCombo"]] = relationship(
-        "ListaPrecioCombo", back_populates="combo", cascade="all, delete-orphan", lazy="selectin"
+        "ListaPrecioCombo", back_populates="combo", cascade="all, delete-orphan"
     )
     pedidos_productos: Mapped[List["PedidoProducto"]] = relationship(
-        "PedidoProducto", back_populates="combo", lazy="selectin"
+        "PedidoProducto", back_populates="combo"
     )

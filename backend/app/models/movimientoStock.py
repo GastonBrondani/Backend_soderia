@@ -47,13 +47,13 @@ class MovimientoStock(Base):
 
     #Relaciones    
     producto: Mapped["Producto"] = relationship(
-        "Producto", back_populates="movimientos_stock", lazy="selectin"
+        "Producto", back_populates="movimientos_stock"
     )
     recorrido: Mapped["Recorrido"] = relationship(
-        "Recorrido", back_populates="movimientos_stock", lazy="selectin"
+        "Recorrido", back_populates="movimientos_stock"
     )
     pedido: Mapped[List["Pedido"]] = relationship(
-        "Pedido", back_populates="movimientos_stock", lazy="selectin"
+        "Pedido", back_populates="movimientos_stock"
     )
 
     def __repr__(self) -> str:

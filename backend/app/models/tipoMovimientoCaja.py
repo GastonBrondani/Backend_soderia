@@ -23,7 +23,7 @@ class TipoMovimientoCaja(Base):
 
     #Relaciones
     caja_empresa: Mapped["CajaEmpresa"] = relationship(
-        "CajaEmpresa",back_populates="tipo_movimiento",lazy="selectin"
+        "CajaEmpresa",back_populates="tipo_movimiento"
     )
 
     def __repr__(self) -> str:

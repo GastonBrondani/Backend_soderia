@@ -23,7 +23,7 @@ class DiaSemana(Base):
 
     #Relaciones
     clientes: Mapped[List["ClienteDiaSemana"]] = relationship(
-        "ClienteDiaSemana", back_populates="dia_semana", lazy="selectin"
+        "ClienteDiaSemana", back_populates="dia_semana"
     )
 
     def __repr__(self) -> str:

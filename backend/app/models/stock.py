@@ -34,10 +34,10 @@ class Stock(Base):
 
     #Relaciones
     producto: Mapped["Producto"] = relationship(
-        "Producto", back_populates="stocks", lazy="selectin"
+        "Producto", back_populates="stocks"
     )
     empresa: Mapped["Empresa"] = relationship(
-        "Empresa", back_populates="stocks", lazy="selectin"
+        "Empresa", back_populates="stocks"
     )
 
     def __repr__(self) -> str:

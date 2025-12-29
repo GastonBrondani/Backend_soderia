@@ -35,6 +35,7 @@ erDiagram
         int id_dia FK
         string turno_visita
         string orden
+        string orden
     }
     cliente_reparto_dia {
         int id_repartodia FK
@@ -55,7 +56,7 @@ erDiagram
     combo_producto {
         int id_combo FK
         int id_producto FK
-        int cantidad
+        string cantidad
     }
     cuenta_bancaria_empresa {
         int id_cuenta PK
@@ -124,14 +125,14 @@ erDiagram
         string fecha_creacion
         string estado
     }
-    lista_precio_producto {
-        int id_lista FK
-        int id_producto FK
-        string precio
-    }
     lista_precio_combo {
         int id_lista FK
         int id_combo FK
+        string precio
+    }
+    lista_precio_producto {
+        int id_lista FK
+        int id_producto FK
         string precio
     }
     medio_pago {
@@ -146,6 +147,18 @@ erDiagram
         string fecha
         string tipo_movimiento
         string cantidad
+        string observacion
+    }
+    pago {
+        int id_pago PK
+        int id_empresa FK
+        int legajo FK
+        int id_pedido FK
+        int id_repartodia FK
+        int id_medio_pago FK
+        string fecha
+        string monto
+        string tipo_pago
         string observacion
     }
     pedido {
@@ -165,7 +178,7 @@ erDiagram
         int id_pedido FK
         int id_producto FK
         int id_combo FK
-        int cantidad
+        string cantidad
         string precio_unitario
     }
     persona {
@@ -180,11 +193,12 @@ erDiagram
         string litros
         string tipo_dispenser
         string observacion
+        string listas_precios
     }
     producto_cliente {
         int legajo FK
         int id_producto FK
-        int cantidad
+        string cantidad
         string estado
         string fecha_entrega
     }
@@ -257,6 +271,7 @@ erDiagram
     cliente ||--o{ documentos : "legajo"
     cliente ||--o{ historico : "legajo"
     cliente ||--o{ mail_cliente : "legajo"
+    cliente ||--o{ pago : "legajo"
     cliente ||--o{ pedido : "legajo"
     cliente ||--o{ producto_cliente : "legajo"
     cliente ||--o{ telefono_cliente : "legajo"
@@ -274,14 +289,17 @@ erDiagram
     empresa ||--o{ combo : "id_empresa"
     empresa ||--o{ cuenta_bancaria_empresa : "id_empresa"
     empresa ||--o{ empleado : "id_empresa"
+    empresa ||--o{ pago : "id_empresa"
     empresa ||--o{ pedido : "id_empresa"
     empresa ||--o{ reparto_dia : "id_empresa"
     empresa ||--o{ stock : "id_empresa"
-    lista_de_precios ||--o{ lista_precio_producto : "id_lista"
     lista_de_precios ||--o{ lista_precio_combo : "id_lista"
+    lista_de_precios ||--o{ lista_precio_producto : "id_lista"
     medio_pago ||--o{ caja_empresa : "id_medio_pago"
+    medio_pago ||--o{ pago : "id_medio_pago"
     medio_pago ||--o{ pedido : "id_medio_pago"
     pedido ||--o{ movimiento_stock : "id_pedido"
+    pedido ||--o{ pago : "id_pedido"
     pedido ||--o{ pedido_producto : "id_pedido"
     persona ||--o{ cliente : "dni"
     persona ||--o{ empleado : "dni"
@@ -293,6 +311,7 @@ erDiagram
     producto ||--o{ stock : "id_producto"
     recorrido ||--o{ movimiento_stock : "id_recorrido"
     reparto_dia ||--o{ cliente_reparto_dia : "id_repartodia"
+    reparto_dia ||--o{ pago : "id_repartodia"
     reparto_dia ||--o{ pedido : "id_repartodia"
     reparto_dia ||--o{ recorrido : "id_repartodia"
     rol ||--o{ usuario_rol : "id_rol"

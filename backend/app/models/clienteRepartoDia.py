@@ -44,10 +44,10 @@ class ClienteRepartoDia(Base):
 
     #Relaciones
     reparto_dia: Mapped["RepartoDia"] = relationship(
-        "RepartoDia",back_populates="reparto_clientes",lazy="selectin"
+        "RepartoDia",back_populates="reparto_clientes"
     )
     cliente: Mapped["Cliente"] = relationship(
-        "Cliente",back_populates="repartos_dias",lazy="selectin"
+        "Cliente",back_populates="repartos_dias"
     )
 
     def __repr__(self) -> str:

@@ -38,7 +38,7 @@ class Documentos(Base):
 
     #Relación
     cliente: Mapped["Cliente"] = relationship(
-        "Cliente",back_populates="documentos",lazy="selectin"
+        "Cliente",back_populates="documentos"
     )
 
     def __repr__(self) -> str:

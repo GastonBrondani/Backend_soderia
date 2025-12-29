@@ -26,11 +26,11 @@ class Persona(Base):
 
     #Relaciones
     clientes: Mapped[List["Cliente"]] = relationship(
-        "Cliente",back_populates="persona",lazy="selectin",passive_deletes=True,
+        "Cliente",back_populates="persona",passive_deletes=True,
     )
     
     empleado: Mapped["Empleado"] = relationship(
-        "Empleado",back_populates="persona",lazy="selectin"
+        "Empleado",back_populates="persona"
     )
 
     def __repr__(self) -> str:

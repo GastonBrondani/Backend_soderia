@@ -36,8 +36,8 @@ class Pago(Base):
     tipo_pago: Mapped[str] = mapped_column(String(30), nullable=False)
     observacion: Mapped[Optional[str]] = mapped_column(Text)
 
-    empresa: Mapped["Empresa"] = relationship("Empresa", lazy="selectin")
-    cliente: Mapped[Optional["Cliente"]] = relationship("Cliente", lazy="selectin")
-    pedido: Mapped[Optional["Pedido"]] = relationship("Pedido", lazy="selectin")
-    reparto_dia: Mapped[Optional["RepartoDia"]] = relationship("RepartoDia", lazy="selectin")
-    medio_pago: Mapped["MedioPago"] = relationship("MedioPago", lazy="selectin")
+    empresa: Mapped["Empresa"] = relationship("Empresa")
+    cliente: Mapped[Optional["Cliente"]] = relationship("Cliente")
+    pedido: Mapped[Optional["Pedido"]] = relationship("Pedido")
+    reparto_dia: Mapped[Optional["RepartoDia"]] = relationship("RepartoDia")
+    medio_pago: Mapped["MedioPago"] = relationship("MedioPago")
