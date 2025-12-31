@@ -3,6 +3,7 @@ from pydantic import BaseModel, field_validator, ConfigDict,Field
 from enum import StrEnum
 from datetime import datetime
 from decimal import Decimal
+from app.schemas.pedidoProducto import PedidoItemIn
 
 
 class EstadoPedido(StrEnum):
@@ -29,8 +30,8 @@ class PedidoBase(BaseModel):
     monto_abonado: Decimal = Decimal("0.00")
     estado: EstadoPedido = EstadoPedido.pendiente
     observacion: Optional[str] = None
-    items: Optional[List[PedidoItemCreate]] = None
     id_repartodia: Optional[int] = None
+    items: Optional[List[PedidoItemIn]] = None
 
     @field_validator("estado", "observacion")
     @classmethod
