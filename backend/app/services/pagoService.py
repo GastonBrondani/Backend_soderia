@@ -65,6 +65,7 @@ class PagoService:
         legajo: int | None = None,
         id_pedido: int | None = None,
         id_repartodia: int | None = None,
+        id_cliente_servicio_periodo: int | None = None,
         id_tipo_mov_ingreso: int = 1,
         id_tipo_mov_egreso: int = 2,
         impactar_cuenta: bool = True,
@@ -119,6 +120,7 @@ class PagoService:
                     monto=monto,
                     tipo_pago=tipo_pago,
                     observacion=observacion,
+                    id_cliente_servicio_periodo=id_cliente_servicio_periodo,
                 )
                 db.add(pago)
                 db.flush()
