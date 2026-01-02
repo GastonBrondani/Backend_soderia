@@ -8,7 +8,9 @@ from app.services.clienteServicioService import (
     crear_servicio_alquiler_dispenser,
     listar_pendientes_cliente,
     pagar_periodo_servicio,
+    actualizar_monto_servicio,
 )
+from app.schemas.servicios import ServicioMontoUpdate
 
 router = APIRouter(prefix="/servicios", tags=["Servicios"])
 
@@ -27,3 +29,25 @@ def pagar(id_periodo: int, legajo: int, id_medio_pago: int, observacion: str | N
     with db.begin():
         pago = pagar_periodo_servicio(db, id_periodo, legajo, id_medio_pago, observacion)
     return {"ok": True, "id_pago": pago.id_pago, "monto": str(pago.monto)}
+
+
+@router.patch("/{id_cliente_servicio}/monto")
+def patch_monto_servicio(
+    id_cliente_servicio: int,
+    payload: ServicioMontoUpdate,
+    db: Session = Depends(get_db),
+):
+    with db.begin():
+        srv = actualizar_monto_servicio(
+            db,
+            id_cliente_servicio=id_cliente_servicio,
+            nuevo_monto=payload.monto_mensual,
+            aplicar_desde=payload.aplicar_desde,
+            actualizar_periodos_no_pagados=payload.actualizar_periodos_no_pagados,
+        )
+
+    return {
+        "ok": True,
+        "id_cliente_servicio": srv.id_cliente_servicio,
+        "monto_mensual": str(srv.monto_mensual),
+    }

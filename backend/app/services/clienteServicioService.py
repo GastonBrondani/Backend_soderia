@@ -139,3 +139,48 @@ def pagar_periodo_servicio(db: Session, id_periodo: int, legajo: int, id_medio_p
     per.fecha_pago = date.today()
 
     return pago
+
+def actualizar_monto_servicio(
+    db,
+    *,
+    id_cliente_servicio: int,
+    nuevo_monto: Decimal,
+    aplicar_desde: date | None = None,
+    actualizar_periodos_no_pagados: bool = True,
+):
+    if nuevo_monto <= 0:
+        raise HTTPException(status_code=400, detail="monto_mensual debe ser > 0")
+
+    vigencia = mes_inicio(aplicar_desde or date.today())
+
+    # lock del servicio
+    srv = db.execute(
+        select(ClienteServicio)
+        .where(ClienteServicio.id_cliente_servicio == id_cliente_servicio)
+        .with_for_update()
+    ).scalar_one_or_none()
+
+    if not srv:
+        raise HTTPException(status_code=404, detail="Servicio inexistente.")
+    if not srv.activo:
+        raise HTTPException(status_code=409, detail="El servicio está inactivo.")
+
+    # 1) actualizar precio base del servicio
+    srv.monto_mensual = nuevo_monto
+
+    # 2) opcional: actualizar períodos no pagados desde vigencia
+    if actualizar_periodos_no_pagados:
+        periodos = db.execute(
+            select(ClienteServicioPeriodo)
+            .where(
+                ClienteServicioPeriodo.id_cliente_servicio == srv.id_cliente_servicio,
+                ClienteServicioPeriodo.periodo >= vigencia,
+                ClienteServicioPeriodo.estado != "PAGADO",
+            )
+            .with_for_update()
+        ).scalars().all()
+
+        for p in periodos:
+            p.monto = nuevo_monto
+
+    return srv
