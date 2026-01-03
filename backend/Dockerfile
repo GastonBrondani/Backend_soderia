@@ -18,5 +18,7 @@ COPY . .
 
 EXPOSE 8000
 
+RUN mkdir -p /data/comprobantes/pagos
+
 # Dev: reload y watch de archivos (con volume)
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

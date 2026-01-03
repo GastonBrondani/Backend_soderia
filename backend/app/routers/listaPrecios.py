@@ -86,6 +86,7 @@ def listar_precios_de_lista_combos(
     return svc_listar_precios_de_lista_combo(db, id_lista, include_combo)
 
 
+#Actualizar o insertar precio de combo en lista de precios. ACA ES DONDE ASIGNO UN COMBO A UNA LISTA. 
 @router.put("/{id_lista}/precios-combos/{id_combo}", response_model=LPCOutCombo)
 def upsert_precio_combo(
     id_lista: int,
@@ -121,6 +122,8 @@ def upsert_precio_global(
         precio=payload.precio,
     )
 
+
+#Con este get, listo productos y combos con su precio, usar este. 
 
 @router.get("/{id_lista}/items", response_model=List[PrecioItemOut])
 def listar_items_de_lista(

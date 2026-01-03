@@ -5,6 +5,7 @@ from datetime import date
 from app.api.router import api_router 
 from contextlib import asynccontextmanager
 from app.core.scheduler import start_scheduler, stop_scheduler
+from fastapi.staticfiles import StaticFiles
 
 
 @asynccontextmanager
@@ -41,6 +42,12 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],            # 👈 IMPORTANTE (GET, POST, OPTIONS, etc)
     allow_headers=["*"],
+)
+
+app.mount(
+    "/docs/comprobantes/pagos",
+    StaticFiles(directory="/data/comprobantes/pagos"),
+    name="comprobantes_pagos",
 )
 
 @app.get("/health")

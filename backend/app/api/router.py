@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from app.routers import (empresa, persona, cliente,direccionCliente, emailCliente, telefonoCliente, empleado,
                           clienteCuenta, producto, listaPrecios,stock, movimientoStock, recorrido,camionReparto,
                           repartoDia, usuario, clienteDiaSemana, diaSemana, clienteRepartoDia,pedido,medioPago, auth,
-                          visita,historico,cajaEmpresa,combo,pago,agenda)
+                          visita,historico,cajaEmpresa,combo,pago,agenda,documentos)
 
 #Los comentados por ahora no se usan
 api_router = APIRouter()
@@ -34,3 +34,4 @@ api_router.include_router(cajaEmpresa.router)
 api_router.include_router(combo.router)
 api_router.include_router(pago.router)
 api_router.include_router(agenda.router)
+api_router.include_router(documentos.router)

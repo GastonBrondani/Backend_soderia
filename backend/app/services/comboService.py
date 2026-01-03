@@ -14,7 +14,7 @@ from app.models.comboProducto import ComboProducto
 from app.models.producto import Producto
 
 from app.schemas.combo import ComboCreate, ComboUpdate, ComboDetalleOut
-from app.schemas.comboProducto import ComboProductoDetalleOut, ProductoMiniOut
+from app.schemas.comboProducto import ComboProductoDetalleOut, ComboProductoIn, ProductoMiniOut
 
 
 # ----------------- helpers -----------------
@@ -160,6 +160,7 @@ def actualizar_combo(db: Session, id_combo: int, payload: ComboUpdate) -> Combo:
     obj = _get_combo_or_404(db, id_combo)
     updates = payload.model_dump(exclude_unset=True)
 
+
     try:
         with _tx(db):
             # campos simples
@@ -210,3 +211,41 @@ def eliminar_combo(db: Session, id_combo: int) -> None:
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error eliminando combo: {e}")
+    
+def actualizar_composicion(
+    db: Session,
+    id_combo: int,
+    productos: List[ComboProductoIn],
+):
+    _get_combo_or_404(db, id_combo)
+
+    try:
+        with _tx(db):
+            ids = [p.id_producto for p in productos]
+            _validar_sin_duplicados(ids)
+            _validar_productos_existentes(db, ids)
+
+            db.query(ComboProducto).filter(
+                ComboProducto.id_combo == id_combo
+            ).delete(synchronize_session=False)
+
+            for p in productos:
+                db.add(
+                    ComboProducto(
+                        id_combo=id_combo,
+                        id_producto=p.id_producto,
+                        cantidad=p.cantidad,
+                    )
+                )
+
+        # 🔥 ESTE COMMIT ES CLAVE
+        db.commit()
+
+        return obtener_combo_detalle(db, id_combo)
+
+    except Exception:
+        db.rollback()
+        raise
+
+
+

@@ -36,3 +36,16 @@ class PagoOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+class PagoLibreIn(BaseModel):
+    legajo: int
+    id_empresa: int
+    id_medio_pago: int
+    monto: Decimal = Field(gt=0)
+    observacion: Optional[str] = None
+    id_repartodia: Optional[int] = None
+
+
+class PagoLibreOut(BaseModel):
+    id_pago: int
+    comprobante_url: str
