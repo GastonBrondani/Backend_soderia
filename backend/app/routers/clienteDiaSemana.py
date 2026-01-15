@@ -14,6 +14,9 @@ from app.models.cliente import Cliente
 from app.models.persona import Persona
 from app.models.visita import Visita
 from sqlalchemy import and_, func
+from sqlalchemy import select, delete, func
+from sqlalchemy.sql import over
+from app.models.visita import Visita
 
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -47,7 +50,7 @@ class ClientePorDiaItem(BaseModel):
     nombre: Optional[str] = None
     apellido: Optional[str] = None
     turno_visita: Optional[str] = None
-    estado_visita: Optional[str] = None
+    estado_visita: str   
 
 class ClientesPorDiaOut(BaseModel):
     fecha: date
@@ -64,11 +67,25 @@ class ClientesPorDiaSinFechaOut(BaseModel):
 @router.get("/agenda/visitas", response_model=ClientesPorDiaOut)
 def listar_clientes_por_fecha(
     fecha: date = Query(..., description="YYYY-MM-DD"),
-    turno: Optional[str] = Query(None, description="Mañana | Tarde | ..."),    
+    turno: Optional[str] = Query(None, description="Mañana | Tarde | ..."),
     db: Session = Depends(get_db),
 ):
-    # Lunes=1 .. Domingo=7 (coincide con tu tabla)
     id_dia = fecha.isoweekday()
+
+    # Subquery: última visita por cliente en esa fecha
+    v = (
+        select(
+            Visita.legajo.label("legajo"),
+            Visita.estado.label("estado_visita"),
+            over(
+                func.row_number(),
+                partition_by=Visita.legajo,
+                order_by=Visita.fecha.desc(),
+            ).label("rn"),
+        )
+        .where(func.date(Visita.fecha) == fecha)
+        .subquery()
+    )
 
     stmt = (
         select(
@@ -79,55 +96,46 @@ def listar_clientes_por_fecha(
             ClienteDiaSemana.turno_visita,
             ClienteDiaSemana.id_dia,
             DiaSemana.nombre_dia,
-            Visita.estado.label("estado_visita"),
+            func.coalesce(v.c.estado_visita, "pendiente").label("estado_visita"),
         )
         .select_from(ClienteDiaSemana)
         .join(Cliente, Cliente.legajo == ClienteDiaSemana.id_cliente)
         .outerjoin(Persona, Persona.dni == Cliente.dni)
         .join(DiaSemana, DiaSemana.id_dia == ClienteDiaSemana.id_dia)
         .outerjoin(
-            Visita,
-            and_(
-                Visita.legajo == Cliente.legajo,
-                func.date(Visita.fecha) == fecha,
-            ),
+            v,
+            (v.c.legajo == Cliente.legajo) & (v.c.rn == 1),
         )
         .where(ClienteDiaSemana.id_dia == id_dia)
-        .order_by(
-            ClienteDiaSemana.turno_visita,
-            ClienteDiaSemana.orden,
-            Persona.apellido,
-            Persona.nombre,
-        )
+        .order_by(ClienteDiaSemana.turno_visita, Persona.apellido, Persona.nombre)
     )
 
-    
     if turno:
         stmt = stmt.where(ClienteDiaSemana.turno_visita.ilike(turno))
 
     rows = db.execute(stmt).all()
 
-    # nombre del día (si no hay filas, lo saco de la tabla de días)
     nombre_dia = rows[0].nombre_dia if rows else db.execute(
         select(DiaSemana.nombre_dia).where(DiaSemana.id_dia == id_dia)
     ).scalar_one()
 
     return ClientesPorDiaOut(
-    fecha=fecha,
-    id_dia=id_dia,
-    nombre_dia=nombre_dia,
-    clientes=[
-        ClientePorDiaItem(
-            legajo=r.legajo,
-            dni=r.dni,
-            nombre=r.nombre,
-            apellido=r.apellido,
-            turno_visita=r.turno_visita,
-            estado_visita=r.estado_visita or "pendiente",
-        )
-        for r in rows
-    ],
-)
+        fecha=fecha,
+        id_dia=id_dia,
+        nombre_dia=nombre_dia,
+        clientes=[
+            ClientePorDiaItem(
+                legajo=r.legajo,
+                dni=r.dni,
+                nombre=r.nombre,
+                apellido=r.apellido,
+                turno_visita=r.turno_visita,
+                estado_visita=r.estado_visita,  # 👈 ya viene siempre (pendiente si no hay visita)
+            )
+            for r in rows
+        ],
+    )
+
 
 
 # ---- Helper de validación ----
@@ -151,7 +159,8 @@ def _validar_dias_existen(db: Session, ids: List[int]) -> None:
 @router.get("/agenda/visitas/dia/{id_dia}", response_model=ClientesPorDiaSinFechaOut)
 def listar_clientes_por_id_dia(
     id_dia: int,
-    turno: Optional[str] = Query(None, description="Mañana | Tarde | ..."),
+    turno: Optional[str] = Query(None),
+    fecha: Optional[date] = Query(None, description="YYYY-MM-DD (opcional para estado_visita)"),
     db: Session = Depends(get_db),
 ):
     # Validación de rango

@@ -1,7 +1,7 @@
-from datetime import date
 from sqlalchemy import select, and_,func
 from decimal import Decimal
 from sqlalchemy.orm import Session
+from datetime import date, datetime, time
 
 from app.models.repartoDia import RepartoDia
 from app.models.cajaEmpresa import CajaEmpresa
@@ -105,17 +105,23 @@ class CajaEmpresaService:
         if id_empresa is not None:
             conds.append(CajaEmpresa.id_empresa == id_empresa)
 
+        # ✅ FIX: date -> rango datetime del día
         if fecha is not None:
-            conds.append(CajaEmpresa.fecha == fecha)
+            inicio = datetime.combine(fecha, time.min)
+            fin = datetime.combine(fecha, time.max)
+            conds.append(CajaEmpresa.fecha >= inicio)
+            conds.append(CajaEmpresa.fecha <= fin)
 
+        # ✅ FIX: también conviene que los rangos trabajen como datetime
         if fecha_desde is not None:
-            conds.append(CajaEmpresa.fecha >= fecha_desde)
+            inicio = datetime.combine(fecha_desde, time.min)
+            conds.append(CajaEmpresa.fecha >= inicio)
 
         if fecha_hasta is not None:
-            conds.append(CajaEmpresa.fecha <= fecha_hasta)
+            fin = datetime.combine(fecha_hasta, time.max)
+            conds.append(CajaEmpresa.fecha <= fin)
 
         stmt = select(func.coalesce(func.sum(CajaEmpresa.monto), 0))
-
         if conds:
             stmt = stmt.where(and_(*conds))
 
@@ -152,3 +158,73 @@ class CajaEmpresaService:
             fecha_desde=fecha_desde,
             fecha_hasta=fecha_hasta,
         )
+        
+    @staticmethod
+    def listar_movimientos(
+        db: Session,
+        *,
+        fecha_desde: date,
+        fecha_hasta: date,
+        id_empresa: int | None = None,
+        limit: int = 200,
+        offset: int = 0,
+    ):
+        """
+        Lista movimientos de caja por rango (inclusive), orden desc por fecha.
+        Devuelve (items, total).
+        """
+        inicio = datetime.combine(fecha_desde, time.min)
+        fin = datetime.combine(fecha_hasta, time.max)
+
+        conds = [
+            CajaEmpresa.fecha >= inicio,
+            CajaEmpresa.fecha <= fin,
+        ]
+        if id_empresa is not None:
+            conds.append(CajaEmpresa.id_empresa == id_empresa)
+
+        # Total (count)
+        total_stmt = select(func.count()).select_from(CajaEmpresa).where(and_(*conds))
+        total = db.execute(total_stmt).scalar_one()
+
+        # Data (join a catálogos)
+        stmt = (
+            select(
+                CajaEmpresa.id_movimiento,
+                CajaEmpresa.id_empresa,
+                CajaEmpresa.fecha,
+                CajaEmpresa.tipo,
+                CajaEmpresa.monto,
+                CajaEmpresa.observacion,
+                MedioPago.nombre.label("medio_pago"),
+                TipoMovimientoCaja.descripcion.label("tipo_movimiento"),
+            )
+            .join(MedioPago, MedioPago.id_medio_pago == CajaEmpresa.id_medio_pago)
+            .join(
+                TipoMovimientoCaja,
+                TipoMovimientoCaja.id_tipo_movimiento == CajaEmpresa.id_tipo_movimiento,
+            )
+            .where(and_(*conds))
+            .order_by(CajaEmpresa.fecha.desc(), CajaEmpresa.id_movimiento.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+
+        rows = db.execute(stmt).all()
+
+        # Mapeo a dicts (para el schema Out)
+        items = [
+            {
+                "id_movimiento": r.id_movimiento,
+                "id_empresa": r.id_empresa,
+                "fecha": r.fecha,
+                "tipo": r.tipo,
+                "monto": r.monto,
+                "observacion": r.observacion,
+                "medio_pago": r.medio_pago,
+                "tipo_movimiento": r.tipo_movimiento,
+            }
+            for r in rows
+        ]
+
+        return items, total
