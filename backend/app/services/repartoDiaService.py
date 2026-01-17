@@ -192,5 +192,31 @@ class RepartoDiaService:
         db.commit()
         db.refresh(e)
         return e  
+    
+    @staticmethod
+    def listar_por_rango(
+        db,
+        *,
+        fecha_desde: date,
+        fecha_hasta: date,
+        id_empresa: Optional[int] = None,
+        id_usuario: Optional[int] = None,
+    ) -> List[RepartoDia]:
+        stmt = select(RepartoDia).where(
+            and_(
+                RepartoDia.fecha >= fecha_desde,
+                RepartoDia.fecha <= fecha_hasta,
+            )
+        )
+
+        if id_empresa is not None:
+            stmt = stmt.where(RepartoDia.id_empresa == id_empresa)
+
+        if id_usuario is not None:
+            stmt = stmt.where(RepartoDia.id_usuario == id_usuario)
+
+        stmt = stmt.order_by(RepartoDia.fecha.desc(), RepartoDia.id_repartodia.desc())
+
+        return db.execute(stmt).scalars().all()
 
    

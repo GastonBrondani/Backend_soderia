@@ -17,5 +17,7 @@ class PrecioItemOut(BaseModel):
     tipo: TipoItemPrecio
     id_lista: int
     id_item: int
-    precio: Decimal
-    nombre: Optional[str] = None  # opcional para UI
+    nombre: str
+    precio: float | None
+    estado: bool | None = None
+

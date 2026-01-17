@@ -1,11 +1,13 @@
 from __future__ import annotations
+from typing import List
 
-from fastapi import APIRouter, Depends,  Response, status
+from fastapi import APIRouter, Body, Depends,  Response, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.combo import ComboCreate, ComboUpdate, ComboOut, ComboDetalleOut
 from app.services import comboService
+from app.schemas.comboProducto import ComboProductoIn
 
 
 router = APIRouter(prefix="/combos", tags=["Combo"])
@@ -34,6 +36,15 @@ def obtener_combo_detalle(id_combo: int, db: Session = Depends(get_db)):
 @router.put("/{id_combo}", response_model=ComboOut)
 def actualizar_combo(id_combo: int, payload: ComboUpdate, db: Session = Depends(get_db)):
     return comboService.actualizar_combo(db, id_combo, payload)
+
+
+@router.put("/{id_combo}/productos", response_model=ComboDetalleOut)
+def actualizar_productos_combo(
+    id_combo: int,
+    productos: List[ComboProductoIn] = Body(...),
+    db: Session = Depends(get_db),
+):
+    return comboService.actualizar_composicion(db, id_combo, productos)
 
 
 @router.delete("/{id_combo}", status_code=status.HTTP_204_NO_CONTENT)

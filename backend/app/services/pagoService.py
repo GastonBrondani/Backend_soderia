@@ -14,6 +14,8 @@ from app.models.medioPago import MedioPago
 from app.models.clienteCuenta import ClienteCuenta
 from app.models.repartoDia import RepartoDia
 from app.models.cajaEmpresa import CajaEmpresa
+from app.schemas.pago import PagoLibreIn, PagoLibreOut
+from app.services.comprobantePagoService import ComprobantePagoService
 
 TWOPLACES = Decimal("0.01")
 
@@ -153,3 +155,34 @@ class PagoService:
             if started_tx:
                 db.rollback()
             raise HTTPException(status_code=500, detail=f"Error interno creando pago: {e}")
+    
+    @staticmethod
+    def crear_pago_libre(
+        db: Session,
+        data: PagoLibreIn,
+    ) -> PagoLibreOut:
+
+        # 1️⃣ Crear el pago
+        pago = PagoService.crear(
+            db,
+            id_empresa=data.id_empresa,
+            id_medio_pago=data.id_medio_pago,
+            fecha=datetime.utcnow(),
+            monto=data.monto,
+            tipo_pago="PAGO_DEUDA",
+            observacion=data.observacion,
+            legajo=data.legajo,
+            id_repartodia=data.id_repartodia,
+        )
+
+        # 2️⃣ Generar y guardar comprobante
+        doc = ComprobantePagoService.generar_y_guardar(
+            db,
+            id_pago=pago.id_pago,
+        )
+
+        # 3️⃣ Respuesta para el front
+        return PagoLibreOut(
+            id_pago=pago.id_pago,
+            comprobante_url=doc.url_archivo,
+        )

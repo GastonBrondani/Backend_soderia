@@ -1,7 +1,7 @@
-from sqlalchemy import select, delete
+from sqlalchemy import func, select, delete, update
 from sqlalchemy.orm import Session, joinedload, selectinload
 from fastapi import HTTPException
-from typing import Any
+from typing import Any, Optional
 
 
 #Modelos utilizados
@@ -212,61 +212,107 @@ class ClienteService:
                 "cuentas",
             )
 
-        # 7) Días de visita: borramos todos y reinsertamos
-        if data.dias_semanas is not None:
-            # snapshot "antes"
-            dias_antes = [
-                {
-                    "id_dia": ds.id_dia,
-                    "turno_visita": ds.turno_visita,
-                    "orden": ds.orden,
-                }
-                for ds in cliente.dias_semanas
-            ]
-
-            db.execute(
-                delete(ClienteDiaSemana).where(
-                    ClienteDiaSemana.id_cliente == cliente.legajo
-                )
-            )
-
-            dias_despues = []
-            if data.dias_semanas:
-                for item in data.dias_semanas:
-                    payload = item.model_dump(exclude_unset=True)
-                    nuevo = ClienteDiaSemana(
-                        id_cliente=cliente.legajo,
-                        id_dia=payload["id_dia"],
-                        turno_visita=payload.get("turno_visita"),
-                        orden=payload.get("orden"),
-                    )
-                    dias_despues.append(
-                        {
-                            "id_dia": nuevo.id_dia,
-                            "turno_visita": nuevo.turno_visita,
-                            "orden": nuevo.orden,
-                        }
-                    )
-                    db.add(nuevo)
-
-            # registrar cambios si efectivamente cambió algo
-            if dias_antes != dias_despues:
-                cambios["dias_semanas"] = {
-                    "antes": dias_antes,
-                    "despues": dias_despues,
-                }
-
-        # Registrar histórico SOLO si hubo cambios
-        if cambios:
-            registrar_evento_cliente(
-                db,
-                legajo=cliente.legajo,
-                codigo_evento=TipoEventoCodigoEnum.CLIENTE_ACTUALIZADO,
-                observacion="Actualización de datos del cliente (detalle)",
-                datos={"cambios": cambios},
-            )
-
         db.commit()
         db.refresh(cliente)
+        
+        return ClienteDetalleOut.model_validate(cliente) 
+        
 
-        return ClienteDetalleOut.model_validate(cliente)
+
+    
+# ================= ORDENAMIENTO =================
+
+def normalizar_orden(
+    db: Session,
+    *,
+    id_dia: int,
+    turno: Optional[str],
+):
+    filas = db.execute(
+        select(
+            ClienteDiaSemana.id_cliente
+        )
+        .where(
+            ClienteDiaSemana.id_dia == id_dia,
+            ClienteDiaSemana.turno_visita == turno,
+        )
+        .order_by(ClienteDiaSemana.orden)
+        .with_for_update()
+    ).scalars().all()
+
+    for idx, id_cliente in enumerate(filas, start=1):
+        db.execute(
+            update(ClienteDiaSemana)
+            .where(
+                ClienteDiaSemana.id_dia == id_dia,
+                ClienteDiaSemana.turno_visita == turno,
+                ClienteDiaSemana.id_cliente == id_cliente,
+            )
+            .values(orden=idx)
+        )
+
+    
+def calcular_orden(
+    db: Session,
+    *,
+    id_dia: int,
+    turno: Optional[str],
+    posicion: str,
+    despues_de_legajo: Optional[int],
+) -> int:
+
+    # 🔒 BLOQUEO + NORMALIZACIÓN
+    normalizar_orden(db, id_dia=id_dia, turno=turno)
+
+    if posicion == "inicio":
+        db.execute(
+            update(ClienteDiaSemana)
+            .where(
+                ClienteDiaSemana.id_dia == id_dia,
+                ClienteDiaSemana.turno_visita == turno,
+            )
+            .values(orden=ClienteDiaSemana.orden + 1)
+        )
+        return 1
+
+    if posicion == "despues":
+        if not despues_de_legajo:
+            raise HTTPException(400, "Falta despues_de_legajo")
+
+        orden_ref = db.execute(
+            select(ClienteDiaSemana.orden)
+            .where(
+                ClienteDiaSemana.id_dia == id_dia,
+                ClienteDiaSemana.turno_visita == turno,
+                ClienteDiaSemana.id_cliente == despues_de_legajo,
+            )
+            .with_for_update()
+        ).scalar_one()
+
+        db.execute(
+            update(ClienteDiaSemana)
+            .where(
+                ClienteDiaSemana.id_dia == id_dia,
+                ClienteDiaSemana.turno_visita == turno,
+                ClienteDiaSemana.orden > orden_ref,
+            )
+            .values(orden=ClienteDiaSemana.orden + 1)
+        )
+
+        return orden_ref + 1
+
+    # final
+    max_orden = db.execute(
+        select(func.coalesce(func.max(ClienteDiaSemana.orden), 0))
+        .where(
+            ClienteDiaSemana.id_dia == id_dia,
+            ClienteDiaSemana.turno_visita == turno,
+        )
+    ).scalar_one()
+
+    return max_orden + 1
+
+
+
+    
+    

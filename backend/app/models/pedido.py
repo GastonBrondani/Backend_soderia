@@ -41,14 +41,19 @@ class Pedido(Base):
     )
     id_repartodia: Mapped[Optional[int]] = mapped_column(
         ForeignKey("reparto_dia.id_repartodia"),
-        nullable=False,
+        nullable=True,
     )
 
     #Campos
     fecha: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)
     monto_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     monto_abonado: Mapped[Decimal] = mapped_column(Numeric(14, 2), server_default="0")
-    estado: Mapped[Optional[str]] = mapped_column(String(30))
+    estado: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default="pendiente",
+        server_default="pendiente",
+    )
     observacion: Mapped[Optional[str]] = mapped_column(Text)
 
     #Relaciones

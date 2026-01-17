@@ -25,3 +25,9 @@ def crear_medio_pago(data: MedioPagoCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(medio)
     return medio
+
+@router.get("/", response_model=list[MedioPagoOut])
+def listar_medios_pago(db: Session = Depends(get_db)):
+    return db.execute(
+        select(MedioPago).order_by(MedioPago.nombre)
+    ).scalars().all()

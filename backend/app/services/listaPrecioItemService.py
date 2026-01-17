@@ -67,17 +67,33 @@ def listar_items_con_precio(db: Session, *, id_lista: int) -> List[PrecioItemOut
 
     # combos con precio
     combo_rows = db.execute(
-        select(Combo.id_combo, Combo.nombre, ListaPrecioCombo.precio)
+        select(
+            Combo.id_combo,
+            Combo.nombre,
+            Combo.estado,
+            ListaPrecioCombo.precio
+        )
         .join(ListaPrecioCombo, ListaPrecioCombo.id_combo == Combo.id_combo)
         .where(ListaPrecioCombo.id_lista == id_lista)
     ).all()
+
 
     out: List[PrecioItemOut] = []
     for (id_producto, nombre, precio) in prod_rows:
         out.append(PrecioItemOut(tipo="producto", id_lista=id_lista, id_item=id_producto, precio=precio, nombre=nombre))
 
-    for (id_combo, nombre, precio) in combo_rows:
-        out.append(PrecioItemOut(tipo="combo", id_lista=id_lista, id_item=id_combo, precio=precio, nombre=nombre))
+    for (id_combo, nombre, estado, precio) in combo_rows:
+        out.append(
+            PrecioItemOut(
+                tipo="combo",
+                id_lista=id_lista,
+                id_item=id_combo,
+                precio=precio,
+                nombre=nombre,
+                estado=estado,
+            )
+        )
+
 
     # orden opcional para UI
     out.sort(key=lambda x: (x.tipo, x.nombre or ""))

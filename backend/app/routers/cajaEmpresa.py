@@ -5,6 +5,10 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.services.cajaEmpresaService import CajaEmpresaService
 from app.schemas.cajaEmpresa import CajaEmpresaTotalOut
+from app.schemas.cajaEmpresa import (
+    CajaEmpresaTotalOut,
+    CajaEmpresaMovimientosListOut,
+)
 
 router = APIRouter(prefix="/caja-empresa", tags=["Caja Empresa"])
 
@@ -70,3 +74,22 @@ def get_total_caja_por_rango(
         id_empresa=id_empresa,
     )
     return CajaEmpresaTotalOut(total=total)
+
+@router.get("/movimientos", response_model=CajaEmpresaMovimientosListOut)
+def listar_movimientos(
+    fecha_desde: date = Query(..., description="Desde (inclusive)"),
+    fecha_hasta: date = Query(..., description="Hasta (inclusive)"),
+    id_empresa: int | None = Query(None, description="Opcional: filtrar por empresa"),
+    limit: int = Query(200, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    items, total = CajaEmpresaService.listar_movimientos(
+        db,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        id_empresa=id_empresa,
+        limit=limit,
+        offset=offset,
+    )
+    return {"items": items, "total": total}

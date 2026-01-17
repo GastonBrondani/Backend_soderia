@@ -38,6 +38,25 @@ def obtener_reparto_dia_por_fecha(
         id_empresa=id_empresa,
         id_usuario=id_usuario,
     )
+    
+    
+@router.get("/por-rango", response_model=List[RepartoDiaOut])
+def listar_repartos_por_rango(
+    fecha_desde: date = Query(..., description="Desde (inclusive)"),
+    fecha_hasta: date = Query(..., description="Hasta (inclusive)"),
+    id_empresa: Optional[int] = Query(None),
+    id_usuario: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    return RepartoDiaService.listar_por_rango(
+        db,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        id_empresa=id_empresa,
+        id_usuario=id_usuario,
+    )
+
+    
 #--------------------------------------------
 #Desabilitado por ahora el actulizar reparto del dia y eliminar
 #@router.put("/{id_repartodia}", response_model=RepartoDiaOut)

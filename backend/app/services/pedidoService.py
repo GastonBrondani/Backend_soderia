@@ -24,6 +24,7 @@ from app.schemas.enumsStock import TipoMovimiento
 
 from app.services.clienteRepartoDiaService import ClienteRepartoDiaService
 from app.services.pagoService import PagoService
+from app.models.comboProducto import ComboProducto
 
 
 TWOPLACES = Decimal("0.01")
@@ -126,46 +127,115 @@ class PedidoService:
             fecha_mov = getattr(ped, "fecha", None) or now
 
             for it in items:
-                prod = db.get(Producto, it.id_producto)
-                if prod is None:
-                    raise HTTPException(status_code=400, detail=f"Producto {it.id_producto} inexistente.")
 
-                if not prod.descuenta_stock:
-                    continue
+                # =====================================================
+                # PRODUCTO SIMPLE
+                # =====================================================
+                if it.id_producto is not None:
+                    prod = db.get(Producto, it.id_producto)
+                    if prod is None:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Producto {it.id_producto} inexistente."
+                        )
 
-                cantidad = _q2(Decimal(it.cantidad))
+                    if not prod.descuenta_stock:
+                        continue
 
-                stock_row = db.execute(
-                    select(Stock)
-                    .where(
-                        Stock.id_empresa == ped.id_empresa,
-                        Stock.id_producto == it.id_producto,
-                    )
-                    .with_for_update()
-                ).scalar_one_or_none()
-                if stock_row is None:
-                    raise HTTPException(
-                        status_code=409,
-                        detail=f"No hay stock configurado para producto {it.id_producto} en empresa {ped.id_empresa}.",
-                    )
+                    cantidad = _q2(Decimal(it.cantidad))
 
-                stock_actual = _q2(stock_row.cantidad or Decimal("0"))
-                if stock_actual < cantidad:
-                    raise HTTPException(
-                        status_code=409,
-                        detail=f"Stock insuficiente producto {it.id_producto}. Disponible: {stock_actual}, requerido: {cantidad}.",
-                    )
+                    stock_row = db.execute(
+                        select(Stock)
+                        .where(
+                            Stock.id_empresa == ped.id_empresa,
+                            Stock.id_producto == it.id_producto,
+                        )
+                        .with_for_update()
+                    ).scalar_one_or_none()
 
-                stock_row.cantidad = _q2(stock_actual - cantidad)
+                    if stock_row is None:
+                        raise HTTPException(
+                            status_code=409,
+                            detail=f"No hay stock para producto {it.id_producto}."
+                        )
 
-                db.add(MovimientoStock(
-                    id_producto=it.id_producto,
-                    id_pedido=ped.id_pedido,
-                    fecha=fecha_mov,
-                    tipo_movimiento=TipoMovimiento.egreso,
-                    cantidad=cantidad,
-                    observacion=f"Venta pedido {ped.id_pedido} (confirmado)",
-                ))
+                    if stock_row.cantidad < cantidad:
+                        raise HTTPException(
+                            status_code=409,
+                            detail=f"Stock insuficiente producto {it.id_producto}."
+                        )
+
+                    stock_row.cantidad -= cantidad
+
+                    db.add(MovimientoStock(
+                        id_producto=it.id_producto,
+                        id_pedido=ped.id_pedido,
+                        fecha=fecha_mov,
+                        tipo_movimiento=TipoMovimiento.egreso,
+                        cantidad=cantidad,
+                        observacion=f"Venta pedido {ped.id_pedido} (producto)",
+                    ))
+
+                # =====================================================
+                # COMBO
+                # =====================================================
+                elif it.id_combo is not None:
+                    combo_items = db.execute(
+                        select(ComboProducto)
+                        .where(ComboProducto.id_combo == it.id_combo)
+                    ).scalars().all()
+
+                    if not combo_items:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Combo {it.id_combo} no tiene productos."
+                        )
+
+                    for cp in combo_items:
+                        prod = db.get(Producto, cp.id_producto)
+                        if prod is None:
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"Producto {cp.id_producto} del combo inexistente."
+                            )
+
+                        if not prod.descuenta_stock:
+                            continue
+
+                        cantidad = _q2(Decimal(cp.cantidad * it.cantidad))
+
+                        stock_row = db.execute(
+                            select(Stock)
+                            .where(
+                                Stock.id_empresa == ped.id_empresa,
+                                Stock.id_producto == cp.id_producto,
+                            )
+                            .with_for_update()
+                        ).scalar_one_or_none()
+
+                        if stock_row is None:
+                            raise HTTPException(
+                                status_code=409,
+                                detail=f"No hay stock para producto {cp.id_producto}."
+                            )
+
+                        if stock_row.cantidad < cantidad:
+                            raise HTTPException(
+                                status_code=409,
+                                detail=f"Stock insuficiente producto {cp.id_producto}."
+                            )
+
+                        stock_row.cantidad -= cantidad
+
+                        db.add(MovimientoStock(
+                            id_producto=cp.id_producto,
+                            id_pedido=ped.id_pedido,
+                            fecha=fecha_mov,
+                            tipo_movimiento=TipoMovimiento.egreso,
+                            cantidad=cantidad,
+                            observacion=f"Venta pedido {ped.id_pedido} (combo {it.id_combo})",
+                        ))
+
 
             # 5) CARGO del pedido a la cuenta (acá recién impacta)
             _aplicar_compra_a_cuenta(cuenta, total)
@@ -277,8 +347,10 @@ class PedidoService:
                         ),
                         "monto_total": total,
                         "monto_abonado": abonado,
+                        "estado": EstadoPedido.pendiente,
                     }
                 )
+
                 db.add(nuevo)
                 db.flush()  # necesitamos nuevo.id_pedido
 
@@ -292,8 +364,9 @@ class PedidoService:
                         total_items += cantidad * precio_unitario
 
                         # (recomendado) validar que exista el producto
+                    if item.id_producto:
                         prod = db.get(Producto, item.id_producto)
-                        if prod is None:
+                        if not prod:
                             raise HTTPException(
                                 status_code=400,
                                 detail=f"Producto {item.id_producto} inexistente.",
@@ -302,10 +375,15 @@ class PedidoService:
                         pp = PedidoProducto(
                             id_pedido=nuevo.id_pedido,
                             id_producto=item.id_producto,
-                            id_combo=item.id_combo if hasattr(item, "id_combo") else None,
+                            id_combo=item.id_combo,
                             cantidad=int(cantidad),
                             precio_unitario=str(precio_unitario),
                         )
+                        if item.id_producto:
+                            prod = db.get(Producto, item.id_producto)
+                            if not prod:
+                                raise HTTPException(...)
+
                         db.add(pp)
 
                     total_items = _q2(total_items)

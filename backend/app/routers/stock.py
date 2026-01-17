@@ -1,11 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select, delete
+from sqlalchemy import func, select, delete
 
 from app.core.database import get_db
 from app.models.stock import Stock
 from app.schemas.stock import StockOut
 from app.services.stockService import StockService
+from app.models.producto import Producto
+from app.schemas.stock import StockDetalleOut
+from app.schemas.stockDetalle import StockDetalleOut
+
 
 router = APIRouter(prefix="/stock", tags=["Stock"])
 
@@ -37,3 +41,83 @@ def eliminar(id_stock: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Stock no encontrado.")
     db.execute(delete(Stock).where(Stock.id_stock == id_stock))
     db.commit()
+    
+@router.get(
+    "/detalle",
+    response_model=list[StockDetalleOut],
+)
+def listar_detalle(
+    db: Session = Depends(get_db),
+    id_empresa: int = Query(...),
+):
+    stmt = (
+        select(
+            Producto.id_producto,
+            Producto.nombre,
+            Producto.litros,
+            Producto.tipo_dispenser,
+            func.coalesce(Stock.cantidad, 0).label("cantidad"),
+        )
+        .outerjoin(
+            Stock,
+            (Stock.id_producto == Producto.id_producto)
+            & (Stock.id_empresa == id_empresa),
+        )
+        .where(
+            (Producto.estado == 'true') | (Producto.estado.is_(None))
+        )
+        .order_by(Producto.nombre)
+    )
+
+    rows = db.execute(stmt).all()
+
+    return [
+        StockDetalleOut(
+            id_producto=r.id_producto,
+            nombre_producto=r.nombre,
+            cantidad=r.cantidad,
+            litros=r.litros,
+            tipo_dispenser=r.tipo_dispenser,
+        )
+        for r in rows
+    ]
+
+@router.get("/detalle")
+def listar_detalle(
+    db: Session = Depends(get_db),
+    id_empresa: int = Query(...),
+):
+    """
+    Devuelve TODOS los productos activos con su stock actual.
+    Si no hay stock, devuelve cantidad = 0.
+    """
+
+    stmt = (
+        select(
+            Producto.id_producto,
+            Producto.nombre,
+            Producto.litros,
+            Producto.tipo_dispenser,
+            func.coalesce(Stock.cantidad, 0).label("cantidad"),
+        )
+        .outerjoin(
+            Stock,
+            (Stock.id_producto == Producto.id_producto)
+            & (Stock.id_empresa == id_empresa),
+        )
+        .where(Producto.estado == True)
+        .order_by(Producto.nombre)
+    )
+
+    rows = db.execute(stmt).all()
+
+    return [
+        {
+            "id_producto": r.id_producto,
+            "nombre_producto": r.nombre,
+            "litros": r.litros,
+            "tipo_dispenser": r.tipo_dispenser,
+            "cantidad": r.cantidad,
+        }
+        for r in rows
+    ]
