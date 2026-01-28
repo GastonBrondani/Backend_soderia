@@ -88,13 +88,27 @@ class PedidoService:
                 raise HTTPException(status_code=400, detail="monto_abonado no puede ser negativo.")
 
             # 2) Bloquear cuenta (antes que reparto, para no deadlockear con PagoService)
+            id_cuenta = getattr(ped, "id_cuenta", None)
+
+            if id_cuenta is None:
+                ids = db.execute(
+                    select(ClienteCuenta.id_cuenta).where(ClienteCuenta.legajo == ped.legajo)
+                ).scalars().all()
+                if not ids:
+                    raise HTTPException(status_code=409, detail="El cliente no tiene cuenta creada.")
+                if len(ids) > 1:
+                    raise HTTPException(status_code=400, detail="Pedido sin id_cuenta y cliente con múltiples cuentas. No se puede confirmar.")
+                id_cuenta = ids[0]
+                ped.id_cuenta = id_cuenta  # opcional: “autofix” para que quede guardado
+
             cuenta = db.execute(
                 select(ClienteCuenta)
-                .where(ClienteCuenta.legajo == ped.legajo)
+                .where(ClienteCuenta.legajo == ped.legajo, ClienteCuenta.id_cuenta == id_cuenta)
                 .with_for_update()
             ).scalar_one_or_none()
             if cuenta is None:
-                raise HTTPException(status_code=409, detail="El cliente no tiene cuenta creada.")
+                raise HTTPException(status_code=404, detail="Cuenta no encontrada para ese cliente.")
+
 
             saldo_antes = _q2(cuenta.saldo or Decimal("0"))
 
@@ -257,6 +271,7 @@ class PedidoService:
                     tipo_pago="COBRO_PEDIDO",
                     observacion=ped.observacion,
                     legajo=ped.legajo,
+                    id_cuenta=id_cuenta,
                     id_pedido=ped.id_pedido,
                     id_repartodia=data.id_repartodia,
                     impactar_cuenta=True,
@@ -337,6 +352,24 @@ class PedidoService:
                 if mp is None:
                     raise HTTPException(status_code=400, detail="id_medio_pago inexistente.")
                 
+                # 2) resolver cuenta (para multi-cuenta)
+                id_cuenta = getattr(pedido_create, "id_cuenta", None)
+
+                ids = db.execute(
+                    select(ClienteCuenta.id_cuenta).where(ClienteCuenta.legajo == pedido_create.legajo)
+                ).scalars().all()
+
+                if not ids:
+                    raise HTTPException(status_code=409, detail="El cliente no tiene cuenta creada.")
+
+                if id_cuenta is None:
+                    if len(ids) > 1:
+                        raise HTTPException(status_code=400, detail="El cliente tiene más de una cuenta. Enviar id_cuenta.")
+                    id_cuenta = ids[0]
+                else:
+                    if id_cuenta not in ids:
+                        raise HTTPException(status_code=404, detail="Cuenta no encontrada para ese cliente.")
+                                
 
                 # 4) Crear pedido (guardamos lo que vino del front)
                 nuevo = Pedido(
@@ -345,11 +378,13 @@ class PedidoService:
                             exclude_unset=True,
                             exclude={"monto_total", "monto_abonado", "items"},
                         ),
+                        "id_cuenta": id_cuenta,   
                         "monto_total": total,
                         "monto_abonado": abonado,
                         "estado": EstadoPedido.pendiente,
                     }
                 )
+
 
                 db.add(nuevo)
                 db.flush()  # necesitamos nuevo.id_pedido
@@ -359,42 +394,36 @@ class PedidoService:
                     total_items = Decimal("0")
 
                     for item in items:
-                        cantidad = _q2(item.cantidad)
+                        cantidad = Decimal(item.cantidad)
                         precio_unitario = _q2(item.precio_unitario)
-                        total_items += cantidad * precio_unitario
+                        total_items += _q2(cantidad) * precio_unitario
 
-                        # (recomendado) validar que exista el producto
-                    if item.id_producto:
-                        prod = db.get(Producto, item.id_producto)
-                        if not prod:
-                            raise HTTPException(
-                                status_code=400,
-                                detail=f"Producto {item.id_producto} inexistente.",
-                            )
+                        if item.id_producto is not None:
+                            prod = db.get(Producto, item.id_producto)
+                            if not prod:
+                                raise HTTPException(status_code=400, detail=f"Producto {item.id_producto} inexistente.")
+
+                        # si soportás combos en PedidoItemIn:
+                        if getattr(item, "id_combo", None) is not None:
+                            # opcional: validar que el combo exista
+                            pass
 
                         pp = PedidoProducto(
                             id_pedido=nuevo.id_pedido,
                             id_producto=item.id_producto,
-                            id_combo=item.id_combo,
+                            id_combo=getattr(item, "id_combo", None),
                             cantidad=int(cantidad),
                             precio_unitario=str(precio_unitario),
                         )
-                        if item.id_producto:
-                            prod = db.get(Producto, item.id_producto)
-                            if not prod:
-                                raise HTTPException(...)
-
                         db.add(pp)
 
                     total_items = _q2(total_items)
                     if total_items != total:
                         raise HTTPException(
                             status_code=400,
-                            detail=(
-                                f"monto_total ({total}) no coincide con suma de items ({total_items}). "
-                                "Revisar cálculo en el front."
-                            ),
+                            detail=f"monto_total ({total}) no coincide con suma de items ({total_items})."
                         )
+
 
                 return PedidoOut.model_validate(nuevo)
 

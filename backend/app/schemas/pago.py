@@ -39,6 +39,7 @@ class PagoOut(BaseModel):
 
 class PagoLibreIn(BaseModel):
     legajo: int
+    id_cuenta: int
     id_empresa: int
     id_medio_pago: int
     monto: Decimal = Field(gt=0)

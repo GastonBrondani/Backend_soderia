@@ -38,7 +38,7 @@ def confirmar_pedido(id_pedido: int, data: PedidoConfirmarIn, db: Session = Depe
 #    """
 #    return PedidoService.cancelar_deuda(db, data)
 
-@router.get("/Por fecha", response_model=list[PedidoOut], status_code=status.HTTP_200_OK)
+@router.get("/por-fecha", response_model=list[PedidoOut], status_code=status.HTTP_200_OK)
 def obtener_pedido(fecha: date, db: Session = Depends(get_db)):
     """
     Obtiene un pedido por alguna fecha dentro del rango indicado.

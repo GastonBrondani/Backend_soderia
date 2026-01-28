@@ -43,6 +43,11 @@ class Pedido(Base):
         ForeignKey("reparto_dia.id_repartodia"),
         nullable=True,
     )
+    id_cuenta: Mapped[int | None] = mapped_column(
+        ForeignKey("cliente_cuenta.id_cuenta"),
+        nullable=True,
+    )
+
 
     #Campos
     fecha: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)

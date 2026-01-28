@@ -23,14 +23,17 @@ class PedidoBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     legajo: int
-    id_medio_pago: int                  
+    id_medio_pago: int
     id_empresa: int = 1
-    fecha: datetime = Field(default_factory=datetime.now) 
+    fecha: datetime = Field(default_factory=datetime.now)
     monto_total: Decimal
     monto_abonado: Decimal = Decimal("0.00")
     estado: EstadoPedido = EstadoPedido.pendiente
     observacion: Optional[str] = None
     id_repartodia: Optional[int] = None
+
+    id_cuenta: Optional[int] = None   
+
     items: Optional[List[PedidoItemIn]] = None
 
     @field_validator("estado", "observacion")
