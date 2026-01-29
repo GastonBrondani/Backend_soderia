@@ -135,6 +135,7 @@ class PagoService:
                     monto=monto,
                     tipo_pago=tipo_pago,
                     observacion=observacion,
+                    id_cuenta=id_cuenta,  # ✅ AGREGAR
                 )
                 db.add(pago)
                 db.flush()

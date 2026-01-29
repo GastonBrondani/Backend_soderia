@@ -70,9 +70,16 @@ class PedidoConfirmarIn(BaseModel):
 
 #EMMA
 class PedidoOutCorto(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id_pedido: int
     fecha: datetime
     estado: Optional[str] = None
-    total: Optional[Decimal] = None
+
+    # "total" en la respuesta, pero sale de Pedido.monto_total (ORM)
+    total: Optional[Decimal] = Field(
+        default=None,
+        validation_alias="monto_total",
+        serialization_alias="total",
+    )
+

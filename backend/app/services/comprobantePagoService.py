@@ -30,9 +30,24 @@ class ComprobantePagoService:
         if pago.legajo is None or pago.cliente is None:
             raise ValueError("El pago no está asociado a un cliente.")
 
-        cuenta = db.execute(
-            select(ClienteCuenta).where(ClienteCuenta.legajo == pago.legajo)
-        ).scalar_one()
+        # ✅ Buscar la cuenta exacta usada en el pago
+        if getattr(pago, "id_cuenta", None) is None:
+            # fallback: si no tenés id_cuenta en Pago, evitá romper (elige una)
+            cuenta = db.execute(
+                select(ClienteCuenta)
+                .where(ClienteCuenta.legajo == pago.legajo)
+                .order_by(ClienteCuenta.id_cuenta.asc())
+            ).scalars().first()
+            if cuenta is None:
+                raise ValueError("El cliente no tiene cuenta asociada.")
+        else:
+            cuenta = db.execute(
+            select(ClienteCuenta).where(ClienteCuenta.id_cuenta == pago.id_cuenta)
+            ).scalar_one_or_none()
+
+            if cuenta is None:
+                raise ValueError("La cuenta asociada al pago no existe.")
+
 
         empresa_nombre = pago.empresa.razon_social
         cliente_nombre = (
