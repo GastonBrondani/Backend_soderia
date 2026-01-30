@@ -43,6 +43,7 @@ class Pago(Base):
 
     tipo_pago: Mapped[str] = mapped_column(String(30), nullable=False)
     observacion: Mapped[Optional[str]] = mapped_column(Text)
+    id_cliente_servicio_periodo: Mapped[Optional[int]] = mapped_column(ForeignKey("cliente_servicio_periodo.id_periodo", ondelete="SET NULL"), nullable=True)
 
     empresa: Mapped["Empresa"] = relationship("Empresa")
     cliente: Mapped[Optional["Cliente"]] = relationship("Cliente")
@@ -52,3 +53,4 @@ class Pago(Base):
 
     # (opcional) relationship a cuenta
     cuenta: Mapped[Optional["ClienteCuenta"]] = relationship("ClienteCuenta")
+    servicio_periodo = relationship("ClienteServicioPeriodo")
