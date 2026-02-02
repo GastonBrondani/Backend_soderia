@@ -35,7 +35,6 @@ erDiagram
         int id_dia FK
         string turno_visita
         string orden
-        string orden
     }
     cliente_reparto_dia {
         int id_repartodia FK
@@ -45,6 +44,10 @@ erDiagram
         string estado_de_la_visita
         string turno_de_la_visita
         string observacion
+    }
+    cliente_servicio {
+    }
+    cliente_servicio_periodo {
     }
     combo {
         int id_combo PK
@@ -160,6 +163,7 @@ erDiagram
         string monto
         string tipo_pago
         string observacion
+        int id_cliente_servicio_periodo FK
     }
     pedido {
         int id_pedido PK
@@ -277,6 +281,7 @@ erDiagram
     cliente ||--o{ telefono_cliente : "legajo"
     cliente ||--o{ usuario : "legajo_cliente"
     cliente ||--o{ visita : "legajo"
+    cliente_servicio_periodo ||--o{ pago : "id_cliente_servicio_periodo"
     combo ||--o{ combo_producto : "id_combo"
     combo ||--o{ lista_precio_combo : "id_combo"
     combo ||--o{ pedido_producto : "id_combo"

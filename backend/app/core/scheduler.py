@@ -14,7 +14,7 @@ from app.models.repartoDia import RepartoDia
 from app.models.empresa import Empresa
 from app.models.usuario import Usuario
 
-from app.services.cajaEmpresaService import CajaEmpresaService
+#from app.services.cajaEmpresaService import CajaEmpresaService
 
 
 scheduler: AsyncIOScheduler | None = None
@@ -103,13 +103,14 @@ def start_scheduler() -> None:
         finally:
             db.close()  
 
-    @scheduler.scheduled_job(CronTrigger(hour=23, minute=55))
-    def job_cerrar_caja():
-        db = SessionLocal()
-        try:            
-            CajaEmpresaService.generar_cierre_repartos_por_fecha(db)
-        finally:
-            db.close()  
+    #No lo usamos porque esta duplicando los montos en caja empresa
+    #@scheduler.scheduled_job(CronTrigger(hour=23, minute=55))
+    #def job_cerrar_caja():
+    #    db = SessionLocal()
+    #    try:            
+    #        CajaEmpresaService.generar_cierre_repartos_por_fecha(db)
+    #    finally:
+    #        db.close()  
     
     scheduler.start()
 

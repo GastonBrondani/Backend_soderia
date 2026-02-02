@@ -35,14 +35,50 @@ from .combo import Combo
 from .comboProducto import ComboProducto
 from .listaPrecioCombo import ListaPrecioCombo
 from .pago import Pago
+from .clienteServicio import ClienteServicio
+from .clienteServicioPeriodo import ClienteServicioPeriodo
+from .listaPrecioServicio import ListaPrecioServicio
+
 
 __all__ = [
-    "CajaEmpresa", "CamionReparto", "Cliente", "ClienteCuenta", "ClienteDiaSemana",
-    "ClienteRepartoDia", "CuentaBancariaEmpresa", "DiaSemana", "DireccionCliente",
-    "Documentos", "MailCliente", "Empleado", "Empresa", "Historico",
-    "ListaDePrecios", "ListaPrecioProducto", "MedioPago", "MovimientoStock",
-    "Pedido", "PedidoProducto", "Persona", "Producto", "ProductoCliente",
-    "Recorrido", "RepartoDia", "Rol", "Stock", "TelefonoCliente",
-    "TipoEvento", "TipoMovimientoCaja", "Usuario", "UsuarioRol","Visita",
-    "Combo", "ComboProducto", "ListaPrecioCombo", "Pago"
+    "CajaEmpresa",
+    "CamionReparto",
+    "Cliente",
+    "ClienteCuenta",
+    "ClienteDiaSemana",
+    "ClienteRepartoDia",
+    "CuentaBancariaEmpresa",
+    "DiaSemana",
+    "DireccionCliente",
+    "Documentos",
+    "MailCliente",
+    "Empleado",
+    "Empresa",
+    "Historico",
+    "ListaDePrecios",
+    "ListaPrecioProducto",
+    "MedioPago",
+    "MovimientoStock",
+    "Pedido",
+    "PedidoProducto",
+    "Persona",
+    "Producto",
+    "ProductoCliente",
+    "Recorrido",
+    "RepartoDia",
+    "Rol",
+    "Stock",
+    "TelefonoCliente",
+    "TipoEvento",
+    "TipoMovimientoCaja",
+    "Usuario",
+    "UsuarioRol",
+    "Visita",
+    "Combo",
+    "ComboProducto",
+    "ListaPrecioCombo",
+    "Pago",
+    "ClienteServicio",
+    "ClienteServicioPeriodo",
+    "ListaPrecioServicio",
 ]
