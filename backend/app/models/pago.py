@@ -16,6 +16,8 @@ if TYPE_CHECKING:
     from app.models.medioPago import MedioPago
     from app.models.cliente import Cliente
 
+from app.models.clienteCuenta import ClienteCuenta  # si querés relationship tipada
+
 
 class Pago(Base):
     __tablename__ = "pago"
@@ -24,6 +26,12 @@ class Pago(Base):
 
     id_empresa: Mapped[int] = mapped_column(ForeignKey("empresa.id_empresa", ondelete="CASCADE"), nullable=False)
     legajo: Mapped[Optional[int]] = mapped_column(ForeignKey("cliente.legajo", ondelete="SET NULL"), nullable=True)
+
+    # ✅ NUEVO
+    id_cuenta: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("cliente_cuenta.id_cuenta", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     id_pedido: Mapped[Optional[int]] = mapped_column(ForeignKey("pedido.id_pedido", ondelete="SET NULL"), nullable=True)
     id_repartodia: Mapped[Optional[int]] = mapped_column(ForeignKey("reparto_dia.id_repartodia", ondelete="SET NULL"), nullable=True)
@@ -42,4 +50,7 @@ class Pago(Base):
     pedido: Mapped[Optional["Pedido"]] = relationship("Pedido")
     reparto_dia: Mapped[Optional["RepartoDia"]] = relationship("RepartoDia")
     medio_pago: Mapped["MedioPago"] = relationship("MedioPago")
+
+    # (opcional) relationship a cuenta
+    cuenta: Mapped[Optional["ClienteCuenta"]] = relationship("ClienteCuenta")
     servicio_periodo = relationship("ClienteServicioPeriodo")

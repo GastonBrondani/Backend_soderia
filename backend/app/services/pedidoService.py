@@ -117,14 +117,41 @@ class PedidoService:
                 )
 
             # 2) Bloquear cuenta (antes que reparto, para no deadlockear con PagoService)
+            id_cuenta = getattr(ped, "id_cuenta", None)
+
+            if id_cuenta is None:
+                ids = (
+                    db.execute(
+                        select(ClienteCuenta.id_cuenta).where(
+                            ClienteCuenta.legajo == ped.legajo
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                if not ids:
+                    raise HTTPException(
+                        status_code=409, detail="El cliente no tiene cuenta creada."
+                    )
+                if len(ids) > 1:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Pedido sin id_cuenta y cliente con múltiples cuentas. No se puede confirmar.",
+                    )
+                id_cuenta = ids[0]
+                ped.id_cuenta = id_cuenta  # opcional: “autofix” para que quede guardado
+
             cuenta = db.execute(
                 select(ClienteCuenta)
-                .where(ClienteCuenta.legajo == ped.legajo)
+                .where(
+                    ClienteCuenta.legajo == ped.legajo,
+                    ClienteCuenta.id_cuenta == id_cuenta,
+                )
                 .with_for_update()
             ).scalar_one_or_none()
             if cuenta is None:
                 raise HTTPException(
-                    status_code=409, detail="El cliente no tiene cuenta creada."
+                    status_code=404, detail="Cuenta no encontrada para ese cliente."
                 )
 
             saldo_antes = _q2(cuenta.saldo or Decimal("0"))
@@ -316,6 +343,7 @@ class PedidoService:
                     tipo_pago="COBRO_PEDIDO",
                     observacion=ped.observacion,
                     legajo=ped.legajo,
+                    id_cuenta=id_cuenta,
                     id_pedido=ped.id_pedido,
                     id_repartodia=data.id_repartodia,
                     impactar_cuenta=True,
@@ -407,6 +435,38 @@ class PedidoService:
                         status_code=400, detail="id_medio_pago inexistente."
                     )
 
+                # 2) resolver cuenta (para multi-cuenta)
+                id_cuenta = getattr(pedido_create, "id_cuenta", None)
+
+                ids = (
+                    db.execute(
+                        select(ClienteCuenta.id_cuenta).where(
+                            ClienteCuenta.legajo == pedido_create.legajo
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+
+                if not ids:
+                    raise HTTPException(
+                        status_code=409, detail="El cliente no tiene cuenta creada."
+                    )
+
+                if id_cuenta is None:
+                    if len(ids) > 1:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="El cliente tiene más de una cuenta. Enviar id_cuenta.",
+                        )
+                    id_cuenta = ids[0]
+                else:
+                    if id_cuenta not in ids:
+                        raise HTTPException(
+                            status_code=404,
+                            detail="Cuenta no encontrada para ese cliente.",
+                        )
+
                 # 4) Crear pedido (guardamos lo que vino del front)
                 nuevo = Pedido(
                     **{
@@ -414,6 +474,7 @@ class PedidoService:
                             exclude_unset=True,
                             exclude={"monto_total", "monto_abonado", "items"},
                         ),
+                        "id_cuenta": id_cuenta,
                         "monto_total": total,
                         "monto_abonado": abonado,
                         "estado": EstadoPedido.pendiente,
@@ -429,7 +490,7 @@ class PedidoService:
                 # 3) Items: PedidoProducto
                 if items:
                     for item in items:
-                        cantidad = _q2(item.cantidad)
+                        cantidad = Decimal(item.cantidad)
                         precio_unitario = _q2(item.precio_unitario)
                         total_calculado += cantidad * precio_unitario
 

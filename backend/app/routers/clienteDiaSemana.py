@@ -50,7 +50,7 @@ class ClientePorDiaItem(BaseModel):
     nombre: Optional[str] = None
     apellido: Optional[str] = None
     turno_visita: Optional[str] = None
-    estado_visita: str   
+    estado_visita: Optional[str] = None
 
 class ClientesPorDiaOut(BaseModel):
     fecha: date

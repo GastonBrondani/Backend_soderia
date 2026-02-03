@@ -42,6 +42,9 @@ class PedidoBase(BaseModel):
     estado: EstadoPedido = EstadoPedido.pendiente
     observacion: Optional[str] = None
     id_repartodia: Optional[int] = None
+
+    id_cuenta: Optional[int] = None   
+
     items: Optional[List[PedidoItemIn]] = None
 
     @field_validator("estado", "observacion")
@@ -79,9 +82,16 @@ class PedidoConfirmarIn(BaseModel):
 
 # EMMA
 class PedidoOutCorto(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id_pedido: int
     fecha: datetime
     estado: Optional[str] = None
-    total: Optional[Decimal] = None
+
+    # "total" en la respuesta, pero sale de Pedido.monto_total (ORM)
+    total: Optional[Decimal] = Field(
+        default=None,
+        validation_alias="monto_total",
+        serialization_alias="total",
+    )
+

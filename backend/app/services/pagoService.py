@@ -65,6 +65,7 @@ class PagoService:
         tipo_pago: str,
         observacion: str | None = None,
         legajo: int | None = None,
+        id_cuenta: int | None = None,
         id_pedido: int | None = None,
         id_repartodia: int | None = None,
         id_cliente_servicio_periodo: int | None = None,
@@ -92,16 +93,28 @@ class PagoService:
                 if legajo is None and tipo_pago in {"COBRO_PEDIDO", "PAGO_DEUDA"}:
                     raise HTTPException(status_code=400, detail="Falta legajo para pago de cliente.")
 
+                # --- cuenta (si aplica) ---
                 cuenta = None
                 if legajo is not None:
+                    if id_cuenta is None:
+                        ids = db.execute(
+                            select(ClienteCuenta.id_cuenta).where(ClienteCuenta.legajo == legajo)
+                        ).scalars().all()
+                        if not ids:
+                            raise HTTPException(status_code=409, detail="El cliente no tiene cuenta creada.")
+                        if len(ids) > 1:
+                            raise HTTPException(status_code=400, detail="El cliente tiene más de una cuenta. Enviar id_cuenta.")
+                        id_cuenta = ids[0]
+
                     cuenta = db.execute(
                         select(ClienteCuenta)
-                        .where(ClienteCuenta.legajo == legajo)
+                        .where(ClienteCuenta.legajo == legajo, ClienteCuenta.id_cuenta == id_cuenta)
                         .with_for_update()
                     ).scalar_one_or_none()
                     if cuenta is None:
-                        raise HTTPException(status_code=409, detail="El cliente no tiene cuenta creada.")
+                        raise HTTPException(status_code=404, detail="Cuenta no encontrada para ese cliente.")
 
+                # --- reparto (si aplica) ---
                 rep = None
                 if id_repartodia is not None:
                     rep = db.execute(
@@ -112,6 +125,7 @@ class PagoService:
                     if rep is None:
                         raise HTTPException(status_code=404, detail="Reparto del día no encontrado")
 
+                # --- crear pago ---
                 pago = Pago(
                     id_empresa=id_empresa,
                     legajo=legajo,
@@ -122,11 +136,13 @@ class PagoService:
                     monto=monto,
                     tipo_pago=tipo_pago,
                     observacion=observacion,
+                    id_cuenta=id_cuenta,  # ✅ AGREGAR
                     id_cliente_servicio_periodo=id_cliente_servicio_periodo,
                 )
                 db.add(pago)
                 db.flush()
 
+                # --- caja empresa ---
                 es_egreso = tipo_pago in {"EGRESO_EMPRESA"}
                 id_tipo_mov = id_tipo_mov_egreso if es_egreso else id_tipo_mov_ingreso
                 tipo = "egreso" if es_egreso else "ingreso"
@@ -142,6 +158,7 @@ class PagoService:
                 )
                 db.add(mov)
 
+                # --- impactar cuenta/reparto ---
                 if cuenta is not None and impactar_cuenta and tipo_pago in {"COBRO_PEDIDO", "PAGO_DEUDA"}:
                     _aplicar_pago_a_cuenta(cuenta, monto)
 
@@ -151,7 +168,6 @@ class PagoService:
                 return pago
 
         except SQLAlchemyError as e:
-            # OJO: solo rollback si esta función abrió la transacción
             if started_tx:
                 db.rollback()
             raise HTTPException(status_code=500, detail=f"Error interno creando pago: {e}")
@@ -172,6 +188,7 @@ class PagoService:
             tipo_pago="PAGO_DEUDA",
             observacion=data.observacion,
             legajo=data.legajo,
+            id_cuenta=data.id_cuenta,
             id_repartodia=data.id_repartodia,
         )
 
