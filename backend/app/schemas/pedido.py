@@ -4,13 +4,11 @@ from enum import StrEnum
 from datetime import datetime
 from decimal import Decimal
 from app.schemas.pedidoProducto import PedidoItemIn
-from datetime import date as date_type
 
 
 class PedidoServicioCreate(BaseModel):
-    tipo_servicio: str = "ALQUILER_DISPENSER"
-    monto: Decimal
-    fecha_inicio: Optional[date_type] = None
+    tipo_servicio: Optional[str] = "ALQUILER_DISPENSER"
+    monto: Optional[Decimal] = None
 
 
 class EstadoPedido(StrEnum):
@@ -43,7 +41,7 @@ class PedidoBase(BaseModel):
     observacion: Optional[str] = None
     id_repartodia: Optional[int] = None
 
-    id_cuenta: Optional[int] = None   
+    id_cuenta: Optional[int] = None
 
     items: Optional[List[PedidoItemIn]] = None
 
@@ -59,7 +57,6 @@ class PedidoCreate(PedidoBase):
     id_empresa: int  # obligatorio
     fecha: datetime  # obligatorio
     monto_total: Decimal  # obligatorio
-    servicios_nuevos: Optional[List[PedidoServicioCreate]] = None
 
 
 # Usado para cancelar deudas.
@@ -94,4 +91,3 @@ class PedidoOutCorto(BaseModel):
         validation_alias="monto_total",
         serialization_alias="total",
     )
-

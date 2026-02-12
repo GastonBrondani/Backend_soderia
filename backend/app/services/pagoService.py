@@ -19,17 +19,30 @@ from app.services.comprobantePagoService import ComprobantePagoService
 
 TWOPLACES = Decimal("0.01")
 
+
 def _q2(v: Decimal | None) -> Decimal:
     v = Decimal("0") if v is None else Decimal(v)
     return v.quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+
 
 def _bucket_medio_pago(nombre: str) -> str:
     n = (nombre or "").strip().lower()
     if n in {"efectivo", "cash"}:
         return "efectivo"
-    if n in {"transferencia", "virtual", "tarjeta", "debito", "crédito", "credito", "qr", "mp", "mercadopago"}:
+    if n in {
+        "transferencia",
+        "virtual",
+        "tarjeta",
+        "debito",
+        "crédito",
+        "credito",
+        "qr",
+        "mp",
+        "mercadopago",
+    }:
         return "virtual"
     raise HTTPException(status_code=400, detail=f"medio_pago no soportado: {nombre!r}")
+
 
 def _aplicar_pago_a_cuenta(cuenta: ClienteCuenta, monto: Decimal) -> None:
     monto = _q2(monto)
@@ -43,17 +56,19 @@ def _aplicar_pago_a_cuenta(cuenta: ClienteCuenta, monto: Decimal) -> None:
         cuenta.deuda = _q2(Decimal("0"))
         cuenta.saldo = _q2(saldo + sobrante)
 
+
 def _sumar_recaudacion_reparto(rep: RepartoDia, bucket: str, monto: Decimal) -> None:
     monto = _q2(monto)
     rep.total_recaudado = _q2(getattr(rep, "total_recaudado", Decimal("0.00"))) + monto
     if bucket == "efectivo":
-        rep.total_efectivo = _q2(getattr(rep, "total_efectivo", Decimal("0.00"))) + monto
+        rep.total_efectivo = (
+            _q2(getattr(rep, "total_efectivo", Decimal("0.00"))) + monto
+        )
     else:
         rep.total_virtual = _q2(getattr(rep, "total_virtual", Decimal("0.00"))) + monto
 
 
 class PagoService:
-
     @staticmethod
     def crear(
         db: Session,
@@ -87,32 +102,54 @@ class PagoService:
                     select(MedioPago).where(MedioPago.id_medio_pago == id_medio_pago)
                 ).scalar_one_or_none()
                 if mp is None:
-                    raise HTTPException(status_code=400, detail="id_medio_pago inexistente.")
+                    raise HTTPException(
+                        status_code=400, detail="id_medio_pago inexistente."
+                    )
                 bucket = _bucket_medio_pago(mp.nombre)
 
                 if legajo is None and tipo_pago in {"COBRO_PEDIDO", "PAGO_DEUDA"}:
-                    raise HTTPException(status_code=400, detail="Falta legajo para pago de cliente.")
+                    raise HTTPException(
+                        status_code=400, detail="Falta legajo para pago de cliente."
+                    )
 
                 # --- cuenta (si aplica) ---
                 cuenta = None
                 if legajo is not None:
                     if id_cuenta is None:
-                        ids = db.execute(
-                            select(ClienteCuenta.id_cuenta).where(ClienteCuenta.legajo == legajo)
-                        ).scalars().all()
+                        ids = (
+                            db.execute(
+                                select(ClienteCuenta.id_cuenta).where(
+                                    ClienteCuenta.legajo == legajo
+                                )
+                            )
+                            .scalars()
+                            .all()
+                        )
                         if not ids:
-                            raise HTTPException(status_code=409, detail="El cliente no tiene cuenta creada.")
+                            raise HTTPException(
+                                status_code=409,
+                                detail="El cliente no tiene cuenta creada.",
+                            )
                         if len(ids) > 1:
-                            raise HTTPException(status_code=400, detail="El cliente tiene más de una cuenta. Enviar id_cuenta.")
+                            raise HTTPException(
+                                status_code=400,
+                                detail="El cliente tiene más de una cuenta. Enviar id_cuenta.",
+                            )
                         id_cuenta = ids[0]
 
                     cuenta = db.execute(
                         select(ClienteCuenta)
-                        .where(ClienteCuenta.legajo == legajo, ClienteCuenta.id_cuenta == id_cuenta)
+                        .where(
+                            ClienteCuenta.legajo == legajo,
+                            ClienteCuenta.id_cuenta == id_cuenta,
+                        )
                         .with_for_update()
                     ).scalar_one_or_none()
                     if cuenta is None:
-                        raise HTTPException(status_code=404, detail="Cuenta no encontrada para ese cliente.")
+                        raise HTTPException(
+                            status_code=404,
+                            detail="Cuenta no encontrada para ese cliente.",
+                        )
 
                 # --- reparto (si aplica) ---
                 rep = None
@@ -123,7 +160,9 @@ class PagoService:
                         .with_for_update()
                     ).scalar_one_or_none()
                     if rep is None:
-                        raise HTTPException(status_code=404, detail="Reparto del día no encontrado")
+                        raise HTTPException(
+                            status_code=404, detail="Reparto del día no encontrado"
+                        )
 
                 # --- crear pago ---
                 pago = Pago(
@@ -154,15 +193,27 @@ class PagoService:
                     fecha=fecha,
                     tipo=tipo,
                     monto=monto,
-                    observacion=(f"PAGO#{pago.id_pago} {tipo_pago} - {observacion}" if observacion else f"PAGO#{pago.id_pago} {tipo_pago}"),
+                    observacion=(
+                        f"PAGO#{pago.id_pago} {tipo_pago} - {observacion}"
+                        if observacion
+                        else f"PAGO#{pago.id_pago} {tipo_pago}"
+                    ),
                 )
                 db.add(mov)
 
                 # --- impactar cuenta/reparto ---
-                if cuenta is not None and impactar_cuenta and tipo_pago in {"COBRO_PEDIDO", "PAGO_DEUDA"}:
+                if (
+                    cuenta is not None
+                    and impactar_cuenta
+                    and tipo_pago in {"COBRO_PEDIDO", "PAGO_DEUDA"}
+                ):
                     _aplicar_pago_a_cuenta(cuenta, monto)
 
-                if rep is not None and impactar_reparto and tipo_pago in {"COBRO_PEDIDO", "PAGO_DEUDA"}:
+                if (
+                    rep is not None
+                    and impactar_reparto
+                    and tipo_pago in {"COBRO_PEDIDO", "PAGO_DEUDA"}
+                ):
                     _sumar_recaudacion_reparto(rep, bucket, monto)
 
                 return pago
@@ -170,8 +221,10 @@ class PagoService:
         except SQLAlchemyError as e:
             if started_tx:
                 db.rollback()
-            raise HTTPException(status_code=500, detail=f"Error interno creando pago: {e}")
-    
+            raise HTTPException(
+                status_code=500, detail=f"Error interno creando pago: {e}"
+            )
+
     @staticmethod
     def crear_pago_libre(
         db: Session,
@@ -198,8 +251,50 @@ class PagoService:
             id_pago=pago.id_pago,
         )
 
-        # 3️⃣ Respuesta para el front
         return PagoLibreOut(
             id_pago=pago.id_pago,
             comprobante_url=doc.url_archivo,
         )
+
+    @staticmethod
+    def asignar_a_reparto(db: Session, id_pago: int, id_repartodia: int) -> Pago:
+        """
+        Asigna un pago YA EXISTENTE a un reparto, actualizando los totales de recaudación
+        del reparto (efectivo/virtual/total).
+        NO genera movimiento en CajaEmpresa (se asume que se generó al crear el pago).
+        """
+        # 1) Traer Pago + MedioPago
+        stmt = select(Pago).where(Pago.id_pago == id_pago).with_for_update()
+        pago = db.execute(stmt).scalar_one_or_none()
+
+        if not pago:
+            raise HTTPException(status_code=404, detail="Pago no encontrado.")
+
+        if pago.id_repartodia is not None:
+            raise HTTPException(
+                status_code=409,
+                detail=f"El pago {id_pago} ya está asignado al reparto {pago.id_repartodia}.",
+            )
+
+        # Necesitamos el medio de pago para saber el bucket (efectivo vs virtual)
+        mp = db.execute(
+            select(MedioPago).where(MedioPago.id_medio_pago == pago.id_medio_pago)
+        ).scalar_one()
+        bucket = _bucket_medio_pago(mp.nombre)
+
+        # 2) Traer RepartoDia
+        rep = db.execute(
+            select(RepartoDia)
+            .where(RepartoDia.id_repartodia == id_repartodia)
+            .with_for_update()
+        ).scalar_one_or_none()
+
+        if not rep:
+            raise HTTPException(status_code=404, detail="RepartoDia no encontrado.")
+
+        # 3) Asignar y actualizar
+        pago.id_repartodia = id_repartodia
+        _sumar_recaudacion_reparto(rep, bucket, pago.monto)
+
+        db.flush()
+        return pago

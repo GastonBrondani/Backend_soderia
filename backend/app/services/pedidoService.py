@@ -324,35 +324,45 @@ class PedidoService:
             _aplicar_compra_a_cuenta(cuenta, total)
 
             # 6) Registrar pago (si corresponde) -> esto aplica pago a cuenta + caja + reparto
-            if abonado > 0:
-                ya_pago = db.execute(
-                    select(Pago.id_pago).where(Pago.id_pedido == ped.id_pedido)
-                ).first()
-                if ya_pago:
-                    raise HTTPException(
-                        status_code=409,
-                        detail="Ya existe un pago registrado para este pedido.",
-                    )
+            # 6) Registrar/Imputar pago al reparto (sin duplicar)
+            abonado_ahora = abonado  # lo que se "cobra" en esta confirmación
 
-                PagoService.crear(
-                    db,
-                    id_empresa=ped.id_empresa,
-                    id_medio_pago=ped.id_medio_pago,
-                    fecha=now,
-                    monto=abonado,
-                    tipo_pago="COBRO_PEDIDO",
-                    observacion=ped.observacion,
-                    legajo=ped.legajo,
-                    id_cuenta=id_cuenta,
-                    id_pedido=ped.id_pedido,
-                    id_repartodia=data.id_repartodia,
-                    impactar_cuenta=True,
-                    impactar_reparto=True,
-                )
+            pago_existente = db.execute(
+                select(Pago).where(Pago.id_pedido == ped.id_pedido)
+            ).scalar_one_or_none()
+
+            if abonado > 0:
+                if pago_existente:
+                    # Ya se cobró al crear el pedido -> NO crear otro pago
+                    abonado_ahora = Decimal("0")
+
+                    # Ahora solo lo imputamos al reparto (esto actualiza totales efectivo/virtual/total)
+                    PagoService.asignar_a_reparto(
+                        db,
+                        id_pago=pago_existente.id_pago,
+                        id_repartodia=data.id_repartodia,
+                    )
+                else:
+                    # No había pago previo -> lo creamos e impactamos reparto
+                    PagoService.crear(
+                        db,
+                        id_empresa=ped.id_empresa,
+                        id_medio_pago=ped.id_medio_pago,
+                        fecha=now,
+                        monto=abonado,
+                        tipo_pago="COBRO_PEDIDO",
+                        observacion=ped.observacion,
+                        legajo=ped.legajo,
+                        id_cuenta=id_cuenta,
+                        id_pedido=ped.id_pedido,
+                        id_repartodia=data.id_repartodia,
+                        impactar_cuenta=True,
+                        impactar_reparto=True,
+                    )
 
             # 7) EstadoPedido (SIN usar "confirmado")
             # lógica: con lo disponible (saldo previo + abonado) ¿cubre el total?
-            pago_disponible = saldo_antes + abonado
+            pago_disponible = saldo_antes + abonado_ahora
 
             if pago_disponible <= 0:
                 ped.estado = EstadoPedido.pendiente
@@ -419,7 +429,6 @@ class PedidoService:
     def crear_pedido(db: Session, pedido_create: PedidoCreate) -> PedidoOut:
         total = _q2(pedido_create.monto_total)
         abonado = _q2(pedido_create.monto_abonado or Decimal("0"))
-
         items = pedido_create.items or []
 
         try:
@@ -435,9 +444,8 @@ class PedidoService:
                         status_code=400, detail="id_medio_pago inexistente."
                     )
 
-                # 2) resolver cuenta (para multi-cuenta)
+                # 2) Resolver cuenta
                 id_cuenta = getattr(pedido_create, "id_cuenta", None)
-
                 ids = (
                     db.execute(
                         select(ClienteCuenta.id_cuenta).where(
@@ -467,112 +475,92 @@ class PedidoService:
                             detail="Cuenta no encontrada para ese cliente.",
                         )
 
-                # 4) Crear pedido (guardamos lo que vino del front)
+                # 3) Estado inicial
+                estado_inicial = EstadoPedido.pendiente
+                if abonado > 0:
+                    estado_inicial = (
+                        EstadoPedido.abonado
+                        if abonado >= total
+                        else EstadoPedido.abonado_parcialmente
+                    )
+
+                # 4) Crear pedido
                 nuevo = Pedido(
                     **{
                         **pedido_create.model_dump(
                             exclude_unset=True,
-                            exclude={"monto_total", "monto_abonado", "items"},
+                            exclude={
+                                "monto_total",
+                                "monto_abonado",
+                                "items",
+                            },
                         ),
                         "id_cuenta": id_cuenta,
                         "monto_total": total,
                         "monto_abonado": abonado,
-                        "estado": EstadoPedido.pendiente,
+                        "estado": estado_inicial,
                     }
                 )
-
                 db.add(nuevo)
-                db.flush()  # necesitamos nuevo.id_pedido
+                db.flush()  # nuevo.id_pedido
 
-                # 3) Items: siempre pedido_producto (SIN tocar stock acá)
                 total_calculado = Decimal("0")
 
-                # 3) Items: PedidoProducto
-                if items:
-                    for item in items:
-                        cantidad = Decimal(item.cantidad)
-                        precio_unitario = _q2(item.precio_unitario)
-                        total_calculado += cantidad * precio_unitario
+                # 5) Items (SIEMPRE)
+                for item in items:
+                    cantidad = Decimal(item.cantidad)
+                    precio_unitario = _q2(item.precio_unitario)
+                    total_calculado += cantidad * precio_unitario
 
-                        # Validaciones
-                        if item.id_producto:
-                            prod = db.get(Producto, item.id_producto)
-                            if not prod:
-                                raise HTTPException(
-                                    status_code=400,
-                                    detail=f"Producto {item.id_producto} inexistente.",
-                                )
-
-                            pp = PedidoProducto(
+                    if item.id_producto:
+                        prod = db.get(Producto, item.id_producto)
+                        if not prod:
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"Producto {item.id_producto} inexistente.",
+                            )
+                        db.add(
+                            PedidoProducto(
                                 id_pedido=nuevo.id_pedido,
                                 id_producto=item.id_producto,
                                 id_combo=None,
                                 cantidad=int(cantidad),
                                 precio_unitario=str(precio_unitario),
                             )
-                            db.add(pp)
-
-                        elif item.id_combo:
-                            # Soporte para combos en items
-                            pp = PedidoProducto(
+                        )
+                    elif item.id_combo:
+                        db.add(
+                            PedidoProducto(
                                 id_pedido=nuevo.id_pedido,
                                 id_producto=None,
                                 id_combo=item.id_combo,
                                 cantidad=int(cantidad),
                                 precio_unitario=str(precio_unitario),
                             )
-                            db.add(pp)
-
-                # 5) SERVICIOS NUEVOS (Alquileres, etc.)
-                if pedido_create.servicios_nuevos:
-                    # Imports locales para evitar ciclos
-                    from app.services.clienteServicioService import (
-                        crear_servicio_alquiler_dispenser,
-                    )
-                    from app.models.clienteServicioPeriodo import ClienteServicioPeriodo
-
-                    for svc_in in pedido_create.servicios_nuevos:
-                        # Sumamos al total esperado (para validación)
-                        total_calculado += _q2(svc_in.monto)
-
-                        # a) Crear el servicio
-                        fecha_ini = svc_in.fecha_inicio or date.today()
-                        srv = crear_servicio_alquiler_dispenser(
-                            db,
-                            legajo=pedido_create.legajo,
-                            monto_mensual=svc_in.monto,
-                            fecha_inicio=fecha_ini,
                         )
-
-                        # b) Buscar el periodo inicial generado y marcarlo PAGADO
-                        #    Explicación: El cobro de este primer mes viene incluido en el TOTAL del pedido.
-                        #    Para que no quede como "Deuda Pendiente" en la cuenta corriente (duplicado),
-                        #    lo marcamos como PAGADO el día de hoy.
-
-                        # El periodo generado por crear_servicio_... es siempre el del mes de fecha_inicio
-                        periodo_date = fecha_ini.replace(day=1)
-
-                        periodo_row = db.execute(
-                            select(ClienteServicioPeriodo).where(
-                                ClienteServicioPeriodo.id_cliente_servicio
-                                == srv.id_cliente_servicio,
-                                ClienteServicioPeriodo.periodo == periodo_date,
-                            )
-                        ).scalar_one_or_none()
-
-                        if periodo_row:
-                            periodo_row.estado = "PAGADO"
-                            periodo_row.fecha_pago = date.today()
-                            # (Opcional) Guardar referencia al pedido si agregamos columna en el futuro.
 
                 total_calculado = _q2(total_calculado)
                 if total_calculado != total:
                     raise HTTPException(
                         status_code=400,
-                        detail=(
-                            f"monto_total ({total}) no coincide con suma de items + servicios ({total_calculado}). "
-                            "Revisar cálculo en el front."
-                        ),
+                        detail=f"monto_total ({total}) no coincide con items+servicios ({total_calculado}).",
+                    )
+
+                # 7) Pago (al final, y dentro de la misma tx)
+                if abonado > 0:
+                    PagoService.crear(
+                        db,
+                        id_empresa=pedido_create.id_empresa,
+                        id_medio_pago=pedido_create.id_medio_pago,
+                        fecha=pedido_create.fecha,
+                        monto=abonado,
+                        tipo_pago="COBRO_PEDIDO",
+                        observacion=pedido_create.observacion,
+                        legajo=pedido_create.legajo,
+                        id_cuenta=id_cuenta,
+                        id_pedido=nuevo.id_pedido,
+                        impactar_cuenta=False,
+                        impactar_reparto=False,
                     )
 
                 return PedidoOut.model_validate(nuevo)

@@ -1,4 +1,4 @@
-from datetime import date,datetime
+from datetime import date, datetime
 from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -8,11 +8,19 @@ from app.models.clienteServicio import ClienteServicio
 from app.models.clienteServicioPeriodo import ClienteServicioPeriodo
 from app.services.pagoService import PagoService
 
-from app.utils.periodos import mes_inicio, vencimiento_mes, periodo_yyyymm
+from app.utils.periodos import mes_inicio, vencimiento_mes
 
 
-def crear_servicio_alquiler_dispenser(db: Session, legajo: int, monto_mensual: Decimal, fecha_inicio: date) -> ClienteServicio:
-    # evita duplicar alquiler activo
+def crear_servicio_alquiler_dispenser(
+    db: Session,
+    legajo: int,
+    monto_mensual: Decimal,
+    *,
+    primer_mes_pagado: bool = False,
+    fecha_pago: date | None = None,
+) -> tuple[ClienteServicio, ClienteServicioPeriodo]:
+    fecha_inicio = date.today()
+
     existe = db.execute(
         select(ClienteServicio).where(
             ClienteServicio.legajo == legajo,
@@ -20,9 +28,8 @@ def crear_servicio_alquiler_dispenser(db: Session, legajo: int, monto_mensual: D
             ClienteServicio.activo,
         )
     ).scalar_one_or_none()
-
     if existe:
-        raise HTTPException(status_code=409, detail="El cliente ya tiene un alquiler de dispenser activo.")
+        raise HTTPException(409, "El cliente ya tiene un alquiler de dispenser activo.")
 
     srv = ClienteServicio(
         legajo=legajo,
@@ -32,16 +39,27 @@ def crear_servicio_alquiler_dispenser(db: Session, legajo: int, monto_mensual: D
         activo=True,
     )
     db.add(srv)
-    db.flush()  # para obtener id_cliente_servicio
+    db.flush()
 
-    # crear período del mes actual (o del mes de inicio) como pendiente
-    hoy = date.today()
-    p = mes_inicio(hoy if fecha_inicio <= hoy else fecha_inicio)
-    _upsert_periodo(db, srv, p)
+    periodo = mes_inicio(fecha_inicio)
+    per = _upsert_periodo(
+        db,
+        srv,
+        periodo,
+        estado="PAGADO" if primer_mes_pagado else "PENDIENTE",
+        fecha_pago=(fecha_pago or date.today()) if primer_mes_pagado else None,
+    )
+    return srv, per
 
-    return srv
 
-def _upsert_periodo(db: Session, srv: ClienteServicio, periodo: date) -> ClienteServicioPeriodo:
+def _upsert_periodo(
+    db: Session,
+    srv: ClienteServicio,
+    periodo: date,
+    *,
+    estado: str = "PENDIENTE",
+    fecha_pago: date | None = None,
+) -> ClienteServicioPeriodo:
     per = db.execute(
         select(ClienteServicioPeriodo).where(
             ClienteServicioPeriodo.id_cliente_servicio == srv.id_cliente_servicio,
@@ -56,23 +74,31 @@ def _upsert_periodo(db: Session, srv: ClienteServicio, periodo: date) -> Cliente
         id_cliente_servicio=srv.id_cliente_servicio,
         periodo=periodo,
         monto=srv.monto_mensual,
-        estado="PENDIENTE",
+        estado=estado,
         fecha_vencimiento=vencimiento_mes(periodo),
-        fecha_pago=None,
+        fecha_pago=fecha_pago,
     )
     db.add(per)
     return per
+
 
 def asegurar_periodo_mes_actual(db: Session, legajo: int) -> None:
     hoy = date.today()
     periodo = mes_inicio(hoy)
 
-    servicios = db.execute(
-        select(ClienteServicio).where(ClienteServicio.legajo == legajo, ClienteServicio.activo)
-    ).scalars().all()
+    servicios = (
+        db.execute(
+            select(ClienteServicio).where(
+                ClienteServicio.legajo == legajo, ClienteServicio.activo
+            )
+        )
+        .scalars()
+        .all()
+    )
 
     for srv in servicios:
         _upsert_periodo(db, srv, periodo)
+
 
 def listar_pendientes_cliente(db: Session, legajo: int):
     # asegura período actual antes de listar
@@ -80,7 +106,11 @@ def listar_pendientes_cliente(db: Session, legajo: int):
 
     stmt = (
         select(ClienteServicioPeriodo)
-        .join(ClienteServicio, ClienteServicio.id_cliente_servicio == ClienteServicioPeriodo.id_cliente_servicio)
+        .join(
+            ClienteServicio,
+            ClienteServicio.id_cliente_servicio
+            == ClienteServicioPeriodo.id_cliente_servicio,
+        )
         .where(
             ClienteServicio.legajo == legajo,
             ClienteServicio.activo,
@@ -89,6 +119,7 @@ def listar_pendientes_cliente(db: Session, legajo: int):
         .order_by(ClienteServicioPeriodo.periodo.desc())
     )
     return db.execute(stmt).scalars().all()
+
 
 def marcar_vencidos(db: Session) -> int:
     hoy = date.today()
@@ -101,7 +132,14 @@ def marcar_vencidos(db: Session) -> int:
         p.estado = "VENCIDO"
     return len(periodos)
 
-def pagar_periodo_servicio(db: Session, id_periodo: int, legajo: int, id_medio_pago: int, observacion: str | None = None):
+
+def pagar_periodo_servicio(
+    db: Session,
+    id_periodo: int,
+    legajo: int,
+    id_medio_pago: int,
+    observacion: str | None = None,
+):
     per = db.execute(
         select(ClienteServicioPeriodo)
         .where(ClienteServicioPeriodo.id_periodo == id_periodo)
@@ -112,11 +150,15 @@ def pagar_periodo_servicio(db: Session, id_periodo: int, legajo: int, id_medio_p
         raise HTTPException(status_code=404, detail="Periodo inexistente.")
 
     srv = db.execute(
-        select(ClienteServicio).where(ClienteServicio.id_cliente_servicio == per.id_cliente_servicio)
+        select(ClienteServicio).where(
+            ClienteServicio.id_cliente_servicio == per.id_cliente_servicio
+        )
     ).scalar_one()
 
     if srv.legajo != legajo:
-        raise HTTPException(status_code=403, detail="El periodo no pertenece al cliente.")
+        raise HTTPException(
+            status_code=403, detail="El periodo no pertenece al cliente."
+        )
     if per.estado == "PAGADO":
         raise HTTPException(status_code=409, detail="El periodo ya está pagado.")
 
@@ -128,10 +170,10 @@ def pagar_periodo_servicio(db: Session, id_periodo: int, legajo: int, id_medio_p
         fecha=datetime.now(),
         monto=per.monto,
         tipo_pago="SERVICIO",
-        observacion=observacion or f"Pago alquiler dispenser {per.periodo.strftime('%Y-%m')}",
+        observacion=observacion
+        or f"Pago alquiler dispenser {per.periodo.strftime('%Y-%m')}",
         legajo=legajo,
         id_cliente_servicio_periodo=per.id_periodo,  # <-- link al periodo
-        
     )
 
     # Marcar periodo pagado
@@ -139,6 +181,7 @@ def pagar_periodo_servicio(db: Session, id_periodo: int, legajo: int, id_medio_p
     per.fecha_pago = date.today()
 
     return pago
+
 
 def actualizar_monto_servicio(
     db,
@@ -170,15 +213,20 @@ def actualizar_monto_servicio(
 
     # 2) opcional: actualizar períodos no pagados desde vigencia
     if actualizar_periodos_no_pagados:
-        periodos = db.execute(
-            select(ClienteServicioPeriodo)
-            .where(
-                ClienteServicioPeriodo.id_cliente_servicio == srv.id_cliente_servicio,
-                ClienteServicioPeriodo.periodo >= vigencia,
-                ClienteServicioPeriodo.estado != "PAGADO",
+        periodos = (
+            db.execute(
+                select(ClienteServicioPeriodo)
+                .where(
+                    ClienteServicioPeriodo.id_cliente_servicio
+                    == srv.id_cliente_servicio,
+                    ClienteServicioPeriodo.periodo >= vigencia,
+                    ClienteServicioPeriodo.estado != "PAGADO",
+                )
+                .with_for_update()
             )
-            .with_for_update()
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         for p in periodos:
             p.monto = nuevo_monto

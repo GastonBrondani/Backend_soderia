@@ -9,7 +9,6 @@ from app.services.listaPrecioProductoService import (
     listar_productos_con_precio_por_lista as svc_listar_productos_con_precio_por_lista,
 )
 from app.schemas.producto import ProductoConPrecioOut
-<<<<<<< HEAD
 from app.schemas.listaDePrecios import ListaDePreciosCreate, ListaDePreciosOut
 from app.services.listaPrecioService import (
     crear_lista as svc_crear_lista,
@@ -21,17 +20,14 @@ from app.services.listaPrecioService import (
 from app.schemas.listaPrecioCombo import (
     LPCOut as LPCOutCombo,
     LPCUpsert as LPCUpsertCombo,
-=======
+)
 from app.schemas.listaDePrecios import (
-    ListaDePreciosCreate, ListaDePreciosOut, ListaDePreciosUpdate
+    ListaDePreciosUpdate,
 )
 from app.services.listaPrecioService import (
-    crear_lista as svc_crear_lista,
-    listar_listas as svc_listar_listas,
     obtener_lista as svc_obtener_lista,
     actualizar_lista as svc_actualizar_lista,
-    #eliminar_lista as svc_eliminar_lista
->>>>>>> 1fdb915f5519f4df57fed3820e0a2268b6aeeca6
+    # eliminar_lista as svc_eliminar_lista
 )
 from app.schemas.combo import ComboConPrecioOut
 from app.services.listaPrecioComboService import (
@@ -89,20 +85,22 @@ def crear_lista(payload: ListaDePreciosCreate, db: Session = Depends(get_db)):
 def listar_listas(db: Session = Depends(get_db), limit: int = 50, offset: int = 0):
     return svc_listar_listas(db, limit, offset)
 
-<<<<<<< HEAD
 
 # Devuelve todos los productos que tienen precio cargado en la lista indicada, junto con ese precio.
 @router.get(
     "/{id_lista}/productos", response_model=List[ProductoConPrecioOut]
 )  # Usado por emma.
-=======
 @router.get("/{id_lista}", response_model=ListaDePreciosOut)
 def obtener_lista(id_lista: int, db: Session = Depends(get_db)):
     return svc_obtener_lista(db, id_lista)
 
+
 @router.put("/{id_lista}", response_model=ListaDePreciosOut)
-def actualizar_lista(id_lista: int, payload: ListaDePreciosUpdate, db: Session = Depends(get_db)):
+def actualizar_lista(
+    id_lista: int, payload: ListaDePreciosUpdate, db: Session = Depends(get_db)
+):
     return svc_actualizar_lista(db, id_lista, payload)
+
 
 @router.delete("/{id_lista}", response_model=ListaDePreciosOut)
 def eliminar_lista(id_lista: int, db: Session = Depends(get_db)):
@@ -111,9 +109,8 @@ def eliminar_lista(id_lista: int, db: Session = Depends(get_db)):
     return svc_actualizar_lista(db, id_lista, payload)
 
 
-#Devuelve todos los productos que tienen precio cargado en la lista indicada, junto con ese precio.
+# Devuelve todos los productos que tienen precio cargado en la lista indicada, junto con ese precio.
 @router.get("/{id_lista}/productos", response_model=List[ProductoConPrecioOut])
->>>>>>> 1fdb915f5519f4df57fed3820e0a2268b6aeeca6
 def listar_productos_con_precio(
     id_lista: int,
     db: Session = Depends(get_db),

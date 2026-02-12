@@ -8,28 +8,54 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+import os
+from app.core.security import hash_password
 
 from app.core.database import SessionLocal
 from app.models.repartoDia import RepartoDia
 from app.models.empresa import Empresa
 from app.models.usuario import Usuario
 
-#from app.services.cajaEmpresaService import CajaEmpresaService
+# from app.services.cajaEmpresaService import CajaEmpresaService
 
 
 scheduler: AsyncIOScheduler | None = None
 
 
-def _get_usuario_sis_or_fail(db: Session) -> Usuario:
-    """
-    Devuelve el usuario de sistema 'sis' o levanta error si no existe.
-    """
+def ensure_usuario_sis(db: Session) -> Usuario:
     stmt = select(Usuario).where(Usuario.nombre_usuario == "sis")
-    usuario = db.execute(stmt).scalar_one_or_none()
+    usuario = db.execute(stmt).scalars().first()  # tolera duplicados sin explotar
 
-    if not usuario:
-        raise RuntimeError("No existe el usuario de sistema 'sis' en la tabla usuario")
+    if usuario:
+        return usuario
 
+    if os.getenv("AUTO_CREATE_SIS", "0") != "1":
+        raise RuntimeError(
+            "No existe el usuario de sistema 'sis' y AUTO_CREATE_SIS != 1"
+        )
+
+    password = os.getenv("SIS_PASSWORD", "sis")
+    hashed = hash_password(password)
+
+    usuario = Usuario(
+        nombre_usuario="sis",
+        legajo_empleado=None,
+        legajo_cliente=None,
+    )
+
+    # Setea contraseña sin asumir el nombre exacto del atributo en el modelo
+    if hasattr(usuario, "contraseña"):
+        setattr(usuario, "contraseña", hashed)
+    elif hasattr(usuario, "contrasena"):
+        setattr(usuario, "contrasena", hashed)
+    else:
+        raise RuntimeError(
+            "No encuentro el atributo de contraseña en el modelo Usuario (contraseña/contrasena)"
+        )
+
+    db.add(usuario)
+    db.commit()
+    db.refresh(usuario)
     return usuario
 
 
@@ -46,17 +72,21 @@ def crear_repartos_del_dia_automaticos(
     if fecha is None:
         fecha = date.today()
 
-    usuario_sis = _get_usuario_sis_or_fail(db)
+    usuario_sis = ensure_usuario_sis(db)
 
     empresas_ids = db.execute(select(Empresa.id_empresa)).scalars().all()
 
     for id_empresa in empresas_ids:
-        reparto = db.execute(
-            select(RepartoDia).where(
-                RepartoDia.id_empresa == id_empresa,
-                RepartoDia.fecha == fecha,
+        reparto = (
+            db.execute(
+                select(RepartoDia).where(
+                    RepartoDia.id_empresa == id_empresa,
+                    RepartoDia.fecha == fecha,
+                )
             )
-        ).scalar_one_or_none()
+            .scalars()
+            .first()
+        )
 
         if reparto:
             continue
@@ -101,17 +131,17 @@ def start_scheduler() -> None:
         try:
             crear_repartos_del_dia_automaticos(db)
         finally:
-            db.close()  
+            db.close()
 
-    #No lo usamos porque esta duplicando los montos en caja empresa
-    #@scheduler.scheduled_job(CronTrigger(hour=23, minute=55))
-    #def job_cerrar_caja():
+    # No lo usamos porque esta duplicando los montos en caja empresa
+    # @scheduler.scheduled_job(CronTrigger(hour=23, minute=55))
+    # def job_cerrar_caja():
     #    db = SessionLocal()
-    #    try:            
+    #    try:
     #        CajaEmpresaService.generar_cierre_repartos_por_fecha(db)
     #    finally:
-    #        db.close()  
-    
+    #        db.close()
+
     scheduler.start()
 
 
