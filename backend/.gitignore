@@ -38,3 +38,7 @@ Thumbs.db
 
 #Diagramas y tools
 tools/
+
+#Pruebas
+verify_dates.py
+

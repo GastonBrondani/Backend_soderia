@@ -31,6 +31,7 @@ erDiagram
         numero_bidones Integer
     }
     cliente_dia_semana {
+<<<<<<< HEAD
         id_cliente Integer PK FK
         id_dia SmallInteger PK FK
         turno_visita String
@@ -44,6 +45,37 @@ erDiagram
         estado_de_la_visita String
         turno_de_la_visita String
         observacion Text
+=======
+        int id_cliente FK
+        int id_dia FK
+        string turno_visita
+        string orden
+    }
+    cliente_reparto_dia {
+        int id_repartodia FK
+        int legajo FK
+        string bidones_entregado
+        string monto_abonado
+        string estado_de_la_visita
+        string turno_de_la_visita
+        string observacion
+    }
+    cliente_servicio {
+    }
+    cliente_servicio_periodo {
+    }
+    combo {
+        int id_combo PK
+        int id_empresa FK
+        string nombre
+        string descripcion
+        string estado
+    }
+    combo_producto {
+        int id_combo FK
+        int id_producto FK
+        string cantidad
+>>>>>>> 2cb4f984c6a679b7080801997fc411d0d8c29270
     }
     cuenta_bancaria_empresa {
         id_cuenta Integer PK
@@ -122,6 +154,7 @@ erDiagram
         nombre String
     }
     movimiento_stock {
+<<<<<<< HEAD
         id_movimiento Integer PK
         id_producto Integer FK
         id_recorrido Integer FK
@@ -130,6 +163,29 @@ erDiagram
         tipo_movimiento String
         cantidad Integer
         observacion Text
+=======
+        int id_movimiento PK
+        int id_producto FK
+        int id_recorrido FK
+        int id_pedido FK
+        string fecha
+        string tipo_movimiento
+        string cantidad
+        string observacion
+    }
+    pago {
+        int id_pago PK
+        int id_empresa FK
+        int legajo FK
+        int id_pedido FK
+        int id_repartodia FK
+        int id_medio_pago FK
+        string fecha
+        string monto
+        string tipo_pago
+        string observacion
+        int id_cliente_servicio_periodo FK
+>>>>>>> 2cb4f984c6a679b7080801997fc411d0d8c29270
     }
     pedido {
         id_pedido Integer PK
@@ -301,9 +357,12 @@ erDiagram
     cliente ||--o{ telefono_cliente : "legajo"
     cliente ||--o{ usuario : "legajo_cliente"
     cliente ||--o{ visita : "legajo"
+<<<<<<< HEAD
     cliente_cuenta ||--o{ pago : "id_cuenta"
     cliente_cuenta ||--o{ pedido : "id_cuenta"
     cliente_servicio ||--o{ cliente_servicio_periodo : "id_cliente_servicio"
+=======
+>>>>>>> 2cb4f984c6a679b7080801997fc411d0d8c29270
     cliente_servicio_periodo ||--o{ pago : "id_cliente_servicio_periodo"
     combo ||--o{ combo_producto : "id_combo"
     combo ||--o{ lista_precio_combo : "id_combo"

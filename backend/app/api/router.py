@@ -1,10 +1,45 @@
 from fastapi import APIRouter
+<<<<<<< HEAD
 from app.routers import (empresa, persona, cliente,direccionCliente, emailCliente, telefonoCliente, empleado,
                           clienteCuenta, producto, listaPrecios,stock, movimientoStock, recorrido,camionReparto,
                           repartoDia, usuario, clienteDiaSemana, diaSemana, clienteRepartoDia,pedido,medioPago, auth,
                           visita,historico,cajaEmpresa,combo,pago,agenda,documentos, servicios)
+=======
+from app.routers import (
+    empresa,
+    persona,
+    cliente,
+    direccionCliente,
+    emailCliente,
+    telefonoCliente,
+    empleado,
+    clienteCuenta,
+    producto,
+    listaPrecios,
+    stock,
+    movimientoStock,
+    recorrido,
+    camionReparto,
+    repartoDia,
+    usuario,
+    clienteDiaSemana,
+    diaSemana,
+    clienteRepartoDia,
+    pedido,
+    medioPago,
+    auth,
+    visita,
+    historico,
+    cajaEmpresa,
+    combo,
+    pago,
+    agenda,
+    documentos,
+    servicios,
+)
+>>>>>>> 2cb4f984c6a679b7080801997fc411d0d8c29270
 
-#Los comentados por ahora no se usan
+# Los comentados por ahora no se usan
 api_router = APIRouter()
 api_router.include_router(empresa.router)
 api_router.include_router(persona.router)
@@ -34,6 +69,11 @@ api_router.include_router(cajaEmpresa.router)
 api_router.include_router(combo.router)
 api_router.include_router(pago.router)
 api_router.include_router(agenda.router)
+<<<<<<< HEAD
 api_router.include_router(documentos.router)   
 api_router.include_router(servicios.router) 
 
+=======
+api_router.include_router(documentos.router)
+api_router.include_router(servicios.router)
+>>>>>>> 2cb4f984c6a679b7080801997fc411d0d8c29270

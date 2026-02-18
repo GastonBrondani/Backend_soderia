@@ -1,23 +1,32 @@
 from typing import Optional, List
-from pydantic import BaseModel, field_validator, ConfigDict,Field
+from pydantic import BaseModel, field_validator, ConfigDict, Field
 from enum import StrEnum
 from datetime import datetime
 from decimal import Decimal
 from app.schemas.pedidoProducto import PedidoItemIn
 
 
+class PedidoServicioCreate(BaseModel):
+    tipo_servicio: Optional[str] = "ALQUILER_DISPENSER"
+    monto: Optional[Decimal] = None
+
+
 class EstadoPedido(StrEnum):
-    pendiente = "pendiente" #Pendiente de pago, todavia no se pago
-    abonado = "abonado" #Total o parcialmente abonado    
-    abonado_parcialmente = "abonado parcialmente" #Abonado parcialmente, queda deuda pendiente    
-    cliente_no_compra = "cliente no compra" #El cliente no compro nada, este estado hace referencia a que el pedido no existio, es para guardar el historico.
-    pedido_postergado = "pedido postergado" #El cliente pidio postergar el pedido para otro momento/horario
-    cliente_pago_de_mas = "cliente pago de más" #El cliente pago de mas queda con saldo a favor en cliente cuenta.
+    pendiente = "pendiente"  # Pendiente de pago, todavia no se pago
+    abonado = "abonado"  # Total o parcialmente abonado
+    abonado_parcialmente = (
+        "abonado parcialmente"  # Abonado parcialmente, queda deuda pendiente
+    )
+    cliente_no_compra = "cliente no compra"  # El cliente no compro nada, este estado hace referencia a que el pedido no existio, es para guardar el historico.
+    pedido_postergado = "pedido postergado"  # El cliente pidio postergar el pedido para otro momento/horario
+    cliente_pago_de_mas = "cliente pago de más"  # El cliente pago de mas queda con saldo a favor en cliente cuenta.
+
 
 class PedidoItemCreate(BaseModel):
     id_producto: int
     cantidad: Decimal
     precio_unitario: Decimal
+
 
 class PedidoBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -32,7 +41,7 @@ class PedidoBase(BaseModel):
     observacion: Optional[str] = None
     id_repartodia: Optional[int] = None
 
-    id_cuenta: Optional[int] = None   
+    id_cuenta: Optional[int] = None
 
     items: Optional[List[PedidoItemIn]] = None
 
@@ -40,7 +49,7 @@ class PedidoBase(BaseModel):
     @classmethod
     def strip_strings(cls, v: Optional[str]) -> Optional[str]:
         return v.strip() if isinstance(v, str) else v
-    
+
 
 class PedidoCreate(PedidoBase):
     legajo: int  # obligatorio
@@ -49,7 +58,8 @@ class PedidoCreate(PedidoBase):
     fecha: datetime  # obligatorio
     monto_total: Decimal  # obligatorio
 
-#Usado para cancelar deudas.
+
+# Usado para cancelar deudas.
 class PedidoCancelarDeudaIn(BaseModel):
     legajo: int
     id_medio_pago: int
@@ -57,18 +67,17 @@ class PedidoCancelarDeudaIn(BaseModel):
     monto: Decimal
     observacion: str | None = None
 
+
 class PedidoOut(PedidoBase):
     model_config = ConfigDict(from_attributes=True)
     id_pedido: int
+
 
 class PedidoConfirmarIn(BaseModel):
     id_repartodia: int
 
 
-
-
-
-#EMMA
+# EMMA
 class PedidoOutCorto(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
@@ -82,4 +91,3 @@ class PedidoOutCorto(BaseModel):
         validation_alias="monto_total",
         serialization_alias="total",
     )
-
