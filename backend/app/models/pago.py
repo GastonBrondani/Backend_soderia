@@ -8,6 +8,7 @@ from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.models.clienteServicioPeriodo import ClienteServicioPeriodo
 
 if TYPE_CHECKING:
     from app.models.empresa import Empresa
@@ -53,4 +54,4 @@ class Pago(Base):
 
     # (opcional) relationship a cuenta
     cuenta: Mapped[Optional["ClienteCuenta"]] = relationship("ClienteCuenta")
-    servicio_periodo = relationship("ClienteServicioPeriodo")
+    servicio_periodo: Mapped[Optional["ClienteServicioPeriodo"]] = relationship("ClienteServicioPeriodo")

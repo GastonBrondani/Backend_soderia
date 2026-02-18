@@ -1,5 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+from typing import List
+
 
 if TYPE_CHECKING:
     from .cajaEmpresa import CajaEmpresa
@@ -26,9 +28,7 @@ class MedioPago(Base):
     caja_empresa: Mapped["CajaEmpresa"] = relationship(
         "CajaEmpresa", back_populates="medio_pago"
     )
-    pedido: Mapped["Pedido"] = relationship(
-        "Pedido", back_populates="medio_pagos"
-    )
+    pedidos: Mapped[List["Pedido"]] = relationship("Pedido")
 
     def __repr__(self) -> str:
         return f"<MedioPago id={self.id_medio_pago} nombre={self.nombre}>"

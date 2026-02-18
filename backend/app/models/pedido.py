@@ -65,9 +65,10 @@ class Pedido(Base):
     cliente: Mapped["Cliente"] = relationship(
         "Cliente", back_populates="pedidos"
         )
-    medio_pagos: Mapped[List["MedioPago"]] = relationship(
-        "MedioPago", back_populates="pedido"
+    medio_pago: Mapped["MedioPago"] = relationship(
+        "MedioPago", back_populates="pedidos"
     )
+
     
     empresa: Mapped["Empresa"] = relationship(
         "Empresa", back_populates="pedidos"

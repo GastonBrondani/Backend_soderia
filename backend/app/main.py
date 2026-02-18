@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import date
@@ -49,6 +50,15 @@ app.mount(
     StaticFiles(directory="/data/comprobantes/pagos"),
     name="comprobantes_pagos",
 )
+
+os.makedirs("/data/comprobantes/pedidos", exist_ok=True)
+
+app.mount(
+    "/docs/comprobantes/pedidos",
+    StaticFiles(directory="/data/comprobantes/pedidos"),
+    name="comprobantes_pedidos",
+)
+
 
 @app.get("/health")
 def health():

@@ -35,6 +35,8 @@ from .combo import Combo
 from .comboProducto import ComboProducto
 from .listaPrecioCombo import ListaPrecioCombo
 from .pago import Pago
+from .clienteServicioPeriodo import ClienteServicioPeriodo
+from .clienteServicio import ClienteServicio
 
 __all__ = [
     "CajaEmpresa", "CamionReparto", "Cliente", "ClienteCuenta", "ClienteDiaSemana",
@@ -44,5 +46,5 @@ __all__ = [
     "Pedido", "PedidoProducto", "Persona", "Producto", "ProductoCliente",
     "Recorrido", "RepartoDia", "Rol", "Stock", "TelefonoCliente",
     "TipoEvento", "TipoMovimientoCaja", "Usuario", "UsuarioRol","Visita",
-    "Combo", "ComboProducto", "ListaPrecioCombo", "Pago"
+    "Combo", "ComboProducto", "ListaPrecioCombo", "Pago", "ClienteServicioPeriodo", "ClienteServicio"
 ]

@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import date
 
 from app.core.database import get_db
 from app.schemas.pedido import PedidoCreate, PedidoOut, PedidoConfirmarIn
 from app.services.pedidoService import PedidoService
+from app.services.comprobantePedidoService import ComprobantePedidoService
+
 
 router = APIRouter(prefix="/pedidos", tags=["Pedidos"])
 
@@ -44,3 +46,18 @@ def obtener_pedido(fecha: date, db: Session = Depends(get_db)):
     Obtiene un pedido por alguna fecha dentro del rango indicado.
     """
     return PedidoService.Listar_pedidos_por_Fecha(db, fecha)
+
+@router.post("/{id_pedido}/comprobante")
+def generar_comprobante_pedido(id_pedido: int, db: Session = Depends(get_db)):
+    try:
+        doc = ComprobantePedidoService.generar_y_guardar(db, id_pedido=id_pedido)
+        return {
+            "id_documento": doc.id_documento,
+            "nombre_archivo": doc.nombre_archivo,
+            "tipo_archivo": doc.tipo_archivo,
+            "url": doc.url_archivo,
+            "fecha": doc.fecha_carga,
+            "observacion": doc.observacion,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generando comprobante: {e}")
