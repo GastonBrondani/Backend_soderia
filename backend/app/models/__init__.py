@@ -35,20 +35,6 @@ from .combo import Combo
 from .comboProducto import ComboProducto
 from .listaPrecioCombo import ListaPrecioCombo
 from .pago import Pago
-<<<<<<< HEAD
-from .clienteServicioPeriodo import ClienteServicioPeriodo
-from .clienteServicio import ClienteServicio
-
-__all__ = [
-    "CajaEmpresa", "CamionReparto", "Cliente", "ClienteCuenta", "ClienteDiaSemana",
-    "ClienteRepartoDia", "CuentaBancariaEmpresa", "DiaSemana", "DireccionCliente",
-    "Documentos", "MailCliente", "Empleado", "Empresa", "Historico",
-    "ListaDePrecios", "ListaPrecioProducto", "MedioPago", "MovimientoStock",
-    "Pedido", "PedidoProducto", "Persona", "Producto", "ProductoCliente",
-    "Recorrido", "RepartoDia", "Rol", "Stock", "TelefonoCliente",
-    "TipoEvento", "TipoMovimientoCaja", "Usuario", "UsuarioRol","Visita",
-    "Combo", "ComboProducto", "ListaPrecioCombo", "Pago", "ClienteServicioPeriodo", "ClienteServicio"
-=======
 from .clienteServicio import ClienteServicio
 from .clienteServicioPeriodo import ClienteServicioPeriodo
 from .listaPrecioServicio import ListaPrecioServicio
@@ -95,5 +81,4 @@ __all__ = [
     "ClienteServicio",
     "ClienteServicioPeriodo",
     "ListaPrecioServicio",
->>>>>>> 2cb4f984c6a679b7080801997fc411d0d8c29270
 ]

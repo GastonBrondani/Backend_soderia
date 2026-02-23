@@ -49,7 +49,6 @@ app.mount(
     name="comprobantes_pagos",
 )
 
-<<<<<<< HEAD
 os.makedirs("/data/comprobantes/pedidos", exist_ok=True)
 
 app.mount(
@@ -58,8 +57,6 @@ app.mount(
     name="comprobantes_pedidos",
 )
 
-=======
->>>>>>> 2cb4f984c6a679b7080801997fc411d0d8c29270
 
 @app.get("/health")
 def health():
