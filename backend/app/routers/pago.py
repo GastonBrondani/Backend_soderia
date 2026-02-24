@@ -13,6 +13,7 @@ from app.schemas.pago import (
     PagoLibreOut,
     PagoOut,
     PagoEgresoCreate,
+    PagoIngresoCreate,
 )
 from app.services.pagoService import PagoService
 from app.services.comprobantePagoService import ComprobantePagoService as ComprobantePagoServiceExtended
@@ -63,6 +64,34 @@ def crear_pago(payload: PagoCreate, db: Session = Depends(get_db)):
         id_pedido=payload.id_pedido,
         id_repartodia=payload.id_repartodia,
     )
+
+
+@router.post("/ingreso", response_model=PagoOut)
+def crear_ingreso(
+    payload: PagoIngresoCreate,
+    db: Session = Depends(get_db),
+    current: CurrentUser = Depends(require_roles("ADMIN")),
+):
+    observacion = (
+        f"[INGRESO] {payload.observacion or ''}".strip()
+        + f" (usuario {current.nombre_usuario})"
+    )
+
+    pago = PagoService.crear(
+        db,
+        id_empresa=1,
+        id_medio_pago=payload.id_medio_pago,
+        fecha=payload.fecha or datetime.utcnow(),
+        monto=payload.monto,
+        tipo_pago="INGRESO_EMPRESA",
+        observacion=observacion,
+        impactar_cuenta=False,
+        impactar_reparto=False,
+    )
+
+    db.commit()
+    db.refresh(pago)
+    return pago
 
 
 @router.post("/egreso", response_model=PagoOut)

@@ -66,3 +66,10 @@ class PagoEgresoCreate(BaseModel):
     motivo: MotivoEgreso
     observacion: Optional[str] = None
     fecha: Optional[datetime] = None
+
+
+class PagoIngresoCreate(BaseModel):
+    id_medio_pago: int
+    monto: Decimal = Field(gt=0)
+    observacion: Optional[str] = None
+    fecha: Optional[datetime] = None
