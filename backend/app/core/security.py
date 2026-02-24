@@ -3,10 +3,35 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
+import os
+from dataclasses import dataclass
+from typing import List
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.models.usuario import Usuario
 
 
 ALGORITHM = "pbkdf2_sha256"
 ITERATIONS = 100_000
+
+# JWT config (compartido con auth)
+SECRET_KEY = os.getenv(
+    "SECRET_KEY", "CAMBIA_ESTA_CLAVE_POR_ALGO_LARGO_Y_SECRETO"
+)
+JWT_ALGORITHM = "HS256"
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+
+
+@dataclass
+class CurrentUser:
+    id_usuario: int
+    nombre_usuario: str
+    roles: List[str]
 
 
 def hash_password(raw: str) -> str:
@@ -48,3 +73,57 @@ def verify_password(raw: str, hashed: str) -> bool:
         iterations,
     )
     return hmac.compare_digest(new_dk.hex(), hash_hex)
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> CurrentUser:
+    cred_exc = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Credenciales inválidas.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        sub = payload.get("sub")
+        nombre_usuario = payload.get("nombre_usuario")
+        roles = payload.get("roles", []) or []
+    except JWTError:
+        raise cred_exc
+
+    if sub is None or nombre_usuario is None:
+        raise cred_exc
+
+    try:
+        user_id = int(sub)
+    except (TypeError, ValueError):
+        raise cred_exc
+
+    user: Usuario | None = db.get(Usuario, user_id)
+    if user is None:
+        raise cred_exc
+
+    # En tokens emitidos antes de roles, roles vendrá vacío
+    if not roles:
+        roles = [ur.rol.nombre for ur in user.usuario_roles] if user.usuario_roles else []
+
+    return CurrentUser(
+        id_usuario=user.id_usuario,
+        nombre_usuario=user.nombre_usuario,
+        roles=roles,
+    )
+
+
+def require_roles(*permitidos: str):
+    def wrapper(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+        if permitidos:
+            if not set(user.roles).intersection(set(permitidos)):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tienes permisos para esta operación.",
+                )
+        return user
+
+    return wrapper

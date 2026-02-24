@@ -186,13 +186,14 @@ class PagoService:
                 id_tipo_mov = id_tipo_mov_egreso if es_egreso else id_tipo_mov_ingreso
                 tipo = "egreso" if es_egreso else "ingreso"
 
+                monto_caja = -monto if es_egreso else monto
                 mov = CajaEmpresa(
                     id_empresa=id_empresa,
                     id_tipo_movimiento=id_tipo_mov,
                     id_medio_pago=id_medio_pago,
                     fecha=fecha,
                     tipo=tipo,
-                    monto=monto,
+                    monto=monto_caja,
                     observacion=(
                         f"PAGO#{pago.id_pago} {tipo_pago} - {observacion}"
                         if observacion
