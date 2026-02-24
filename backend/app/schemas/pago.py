@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -50,3 +51,18 @@ class PagoLibreIn(BaseModel):
 class PagoLibreOut(BaseModel):
     id_pago: int
     comprobante_url: str
+
+
+class MotivoEgreso(str, Enum):
+    COMBUSTIBLE = "COMBUSTIBLE"
+    SUELDOS = "SUELDOS"
+    INSUMOS = "INSUMOS"
+    OTRO = "OTRO"
+
+
+class PagoEgresoCreate(BaseModel):
+    id_medio_pago: int
+    monto: Decimal = Field(gt=0)
+    motivo: MotivoEgreso
+    observacion: Optional[str] = None
+    fecha: Optional[datetime] = None

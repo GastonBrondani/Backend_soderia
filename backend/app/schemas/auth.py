@@ -12,10 +12,9 @@ class LoginRequest(BaseModel):
 
 
 class LoginResponse(BaseModel):
-    # Por ahora, sin roles ni nada raro
     access_token: str
     token_type: str = "bearer"
 
-    # Si querés también devolver info básica del usuario:
     id_usuario: int
     nombre_usuario: str
+    roles: list[str]

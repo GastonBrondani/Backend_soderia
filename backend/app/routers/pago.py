@@ -1,12 +1,19 @@
-from http.client import HTTPException
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.security import require_roles, CurrentUser
 from app.schemas.pedido import PedidoCancelarDeudaIn
 from app.schemas.clienteCuenta import ClienteCuentaOut
 from app.services.pedidoService import PedidoService
-from app.schemas.pago import PagoCreate, PagoLibreIn, PagoLibreOut, PagoOut
+from app.schemas.pago import (
+    PagoCreate,
+    PagoLibreIn,
+    PagoLibreOut,
+    PagoOut,
+    PagoEgresoCreate,
+)
 from app.services.pagoService import PagoService
 from app.services.comprobantePagoService import ComprobantePagoService as ComprobantePagoServiceExtended
 
@@ -56,6 +63,35 @@ def crear_pago(payload: PagoCreate, db: Session = Depends(get_db)):
         id_pedido=payload.id_pedido,
         id_repartodia=payload.id_repartodia,
     )
+
+
+@router.post("/egreso", response_model=PagoOut)
+def crear_egreso(
+    payload: PagoEgresoCreate,
+    db: Session = Depends(get_db),
+    current: CurrentUser = Depends(require_roles("ADMIN")),
+):
+    observacion = (
+        f"[EGRESO {payload.motivo}] {payload.observacion or ''}".strip()
+        + f" (usuario {current.nombre_usuario})"
+    )
+
+    pago = PagoService.crear(
+        db,
+        id_empresa=1,
+        id_medio_pago=payload.id_medio_pago,
+        fecha=payload.fecha or datetime.utcnow(),
+        monto=payload.monto,
+        tipo_pago="EGRESO_EMPRESA",
+        observacion=observacion,
+        impactar_cuenta=False,
+        impactar_reparto=False,
+    )
+
+    db.commit()
+    db.refresh(pago)
+    return pago
+
 
 @router.post("/{id_pago}/comprobante")
 def generar_comprobante_pago(
