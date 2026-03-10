@@ -323,46 +323,36 @@ class PedidoService:
             # 5) CARGO del pedido a la cuenta (acá recién impacta)
             _aplicar_compra_a_cuenta(cuenta, total)
 
-            # 6) Registrar pago (si corresponde) -> esto aplica pago a cuenta + caja + reparto
-            # 6) Registrar/Imputar pago al reparto (sin duplicar)
-            abonado_ahora = abonado  # lo que se "cobra" en esta confirmación
-
-            pago_existente = db.execute(
-                select(Pago).where(Pago.id_pedido == ped.id_pedido)
-            ).scalar_one_or_none()
-
+            # 6) Registrar pago (si corresponde) -> aplica pago a cuenta + caja + reparto
             if abonado > 0:
-                if pago_existente:
-                    # Ya se cobró al crear el pedido -> NO crear otro pago
-                    abonado_ahora = Decimal("0")
+                ya_pago = db.execute(
+                    select(Pago.id_pago).where(Pago.id_pedido == ped.id_pedido)
+                ).first()
+                if ya_pago:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Ya existe un pago registrado para este pedido."
+                    )
 
-                    # Ahora solo lo imputamos al reparto (esto actualiza totales efectivo/virtual/total)
-                    PagoService.asignar_a_reparto(
-                        db,
-                        id_pago=pago_existente.id_pago,
-                        id_repartodia=data.id_repartodia,
-                    )
-                else:
-                    # No había pago previo -> lo creamos e impactamos reparto
-                    PagoService.crear(
-                        db,
-                        id_empresa=ped.id_empresa,
-                        id_medio_pago=ped.id_medio_pago,
-                        fecha=now,
-                        monto=abonado,
-                        tipo_pago="COBRO_PEDIDO",
-                        observacion=ped.observacion,
-                        legajo=ped.legajo,
-                        id_cuenta=id_cuenta,
-                        id_pedido=ped.id_pedido,
-                        id_repartodia=data.id_repartodia,
-                        impactar_cuenta=True,
-                        impactar_reparto=True,
-                    )
+                PagoService.crear(
+                    db,
+                    id_empresa=ped.id_empresa,
+                    id_medio_pago=ped.id_medio_pago,
+                    fecha=now,
+                    monto=abonado,
+                    tipo_pago="COBRO_PEDIDO",
+                    observacion=ped.observacion,
+                    legajo=ped.legajo,
+                    id_cuenta=id_cuenta,
+                    id_pedido=ped.id_pedido,
+                    id_repartodia=data.id_repartodia,
+                    impactar_cuenta=True,
+                    impactar_reparto=True,
+                )
 
             # 7) EstadoPedido (SIN usar "confirmado")
             # lógica: con lo disponible (saldo previo + abonado) ¿cubre el total?
-            pago_disponible = saldo_antes + abonado_ahora
+            pago_disponible = saldo_antes + abonado
 
             if pago_disponible <= 0:
                 ped.estado = EstadoPedido.pendiente
@@ -546,22 +536,7 @@ class PedidoService:
                         detail=f"monto_total ({total}) no coincide con items+servicios ({total_calculado}).",
                     )
 
-                # 7) Pago (al final, y dentro de la misma tx)
-                if abonado > 0:
-                    PagoService.crear(
-                        db,
-                        id_empresa=pedido_create.id_empresa,
-                        id_medio_pago=pedido_create.id_medio_pago,
-                        fecha=pedido_create.fecha,
-                        monto=abonado,
-                        tipo_pago="COBRO_PEDIDO",
-                        observacion=pedido_create.observacion,
-                        legajo=pedido_create.legajo,
-                        id_cuenta=id_cuenta,
-                        id_pedido=nuevo.id_pedido,
-                        impactar_cuenta=False,
-                        impactar_reparto=False,
-                    )
+                
 
                 return PedidoOut.model_validate(nuevo)
 

@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
+from app.models.clienteCuenta import ClienteCuenta
 from app.models.clienteServicio import ClienteServicio
 from app.models.clienteServicioPeriodo import ClienteServicioPeriodo
 from app.services.pagoService import PagoService
@@ -11,13 +12,65 @@ from app.services.pagoService import PagoService
 from app.utils.periodos import mes_inicio, vencimiento_mes
 
 
+def _resolver_cuenta(
+    db: Session, legajo: int, id_cuenta: int | None, *, lock: bool = False
+) -> ClienteCuenta:
+    """
+    Devuelve la cuenta a usar para el cliente.
+    - Si id_cuenta es None y hay una sola cuenta -> usa esa.
+    - Si hay múltiples y no se envió id_cuenta -> error 400/409.
+    - Si se envió id_cuenta que no pertenece -> 404.
+    """
+    ids = (
+        db.execute(
+            select(ClienteCuenta.id_cuenta).where(ClienteCuenta.legajo == legajo)
+        )
+        .scalars()
+        .all()
+    )
+
+    if not ids:
+        raise HTTPException(
+            status_code=409, detail="El cliente no tiene cuenta creada."
+        )
+
+    if id_cuenta is None:
+        if len(ids) > 1:
+            raise HTTPException(
+                status_code=400,
+                detail="El cliente tiene múltiples cuentas. Enviar id_cuenta.",
+            )
+        id_cuenta = ids[0]
+    else:
+        if id_cuenta not in ids:
+            raise HTTPException(
+                status_code=404,
+                detail="Cuenta no encontrada para ese cliente.",
+            )
+
+    stmt = (
+        select(ClienteCuenta)
+        .where(
+            ClienteCuenta.legajo == legajo,
+            ClienteCuenta.id_cuenta == id_cuenta,
+        )
+        .with_for_update()
+        if lock
+        else select(ClienteCuenta).where(
+            ClienteCuenta.legajo == legajo, ClienteCuenta.id_cuenta == id_cuenta
+        )
+    )
+
+    cuenta = db.execute(stmt).scalar_one_or_none()
+    if cuenta is None:
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada.")
+    return cuenta
+
+
 def crear_servicio_alquiler_dispenser(
     db: Session,
     legajo: int,
     monto_mensual: Decimal,
-    *,
-    primer_mes_pagado: bool = False,
-    fecha_pago: date | None = None,
 ) -> tuple[ClienteServicio, ClienteServicioPeriodo]:
     fecha_inicio = date.today()
 
@@ -46,9 +99,10 @@ def crear_servicio_alquiler_dispenser(
         db,
         srv,
         periodo,
-        estado="PAGADO" if primer_mes_pagado else "PENDIENTE",
-        fecha_pago=(fecha_pago or date.today()) if primer_mes_pagado else None,
+        estado="PENDIENTE",
+        fecha_pago=None,
     )
+    db.flush()
     return srv, per
 
 
@@ -74,11 +128,13 @@ def _upsert_periodo(
         id_cliente_servicio=srv.id_cliente_servicio,
         periodo=periodo,
         monto=srv.monto_mensual,
+        monto_pendiente=Decimal("0") if estado == "PAGADO" else Decimal(srv.monto_mensual),
         estado=estado,
         fecha_vencimiento=vencimiento_mes(periodo),
         fecha_pago=fecha_pago,
     )
     db.add(per)
+    db.flush()
     return per
 
 
@@ -123,22 +179,56 @@ def listar_pendientes_cliente(db: Session, legajo: int):
 
 def marcar_vencidos(db: Session) -> int:
     hoy = date.today()
-    stmt = select(ClienteServicioPeriodo).where(
-        ClienteServicioPeriodo.estado == "PENDIENTE",
-        ClienteServicioPeriodo.fecha_vencimiento < hoy,
+    stmt = (
+        select(ClienteServicioPeriodo, ClienteServicio.legajo)
+        .join(
+            ClienteServicio,
+            ClienteServicio.id_cliente_servicio
+            == ClienteServicioPeriodo.id_cliente_servicio,
+        )
+        .where(
+            ClienteServicioPeriodo.estado == "PENDIENTE",
+            ClienteServicioPeriodo.fecha_vencimiento < hoy,
+        )
+        .with_for_update()
     )
-    periodos = db.execute(stmt).scalars().all()
-    for p in periodos:
-        p.estado = "VENCIDO"
-    return len(periodos)
+
+    rows = db.execute(stmt).all()
+    procesados = 0
+
+    for per, legajo in rows:
+        cuenta = _resolver_cuenta(db, legajo, id_cuenta=None, lock=True)
+
+        pendiente = Decimal(per.monto_pendiente or per.monto or Decimal("0"))
+        saldo = Decimal(cuenta.saldo or Decimal("0"))
+        deuda = Decimal(cuenta.deuda or Decimal("0"))
+
+        if saldo >= pendiente:
+            cuenta.saldo = saldo - pendiente
+            per.monto_pendiente = Decimal("0")
+            per.estado = "PAGADO"
+            per.fecha_pago = hoy
+        else:
+            faltante = pendiente - saldo
+            cuenta.saldo = Decimal("0")
+            cuenta.deuda = deuda + faltante
+            per.monto_pendiente = faltante
+            per.estado = "VENCIDO"
+
+        procesados += 1
+
+    return procesados
 
 
 def pagar_periodo_servicio(
     db: Session,
     id_periodo: int,
     legajo: int,
-    id_medio_pago: int,
+    id_medio_pago: int | None = None,
     observacion: str | None = None,
+    *,
+    id_cuenta: int | None = None,
+    usar_saldo: bool = False,
 ):
     per = db.execute(
         select(ClienteServicioPeriodo)
@@ -159,28 +249,70 @@ def pagar_periodo_servicio(
         raise HTTPException(
             status_code=403, detail="El periodo no pertenece al cliente."
         )
+
     if per.estado == "PAGADO":
         raise HTTPException(status_code=409, detail="El periodo ya está pagado.")
 
-    # Crear el pago con el service (esto impacta caja_empresa automáticamente)
-    pago = PagoService.crear(
-        db,
-        id_empresa=1,  # en tu caso 1 sola empresa
-        id_medio_pago=id_medio_pago,
-        fecha=datetime.now(),
-        monto=per.monto,
-        tipo_pago="SERVICIO",
-        observacion=observacion
-        or f"Pago alquiler dispenser {per.periodo.strftime('%Y-%m')}",
-        legajo=legajo,
-        id_cliente_servicio_periodo=per.id_periodo,  # <-- link al periodo
-    )
+    cuenta = _resolver_cuenta(db, legajo, id_cuenta=id_cuenta, lock=True)
 
-    # Marcar periodo pagado
+    monto = Decimal(per.monto_pendiente or per.monto or Decimal("0"))
+    if monto <= 0:
+        raise HTTPException(
+            status_code=409,
+            detail="El período no tiene monto pendiente para cobrar.",
+        )
+
+    estado_anterior = per.estado
+    pago = None
+
+    if usar_saldo:
+        saldo = Decimal(cuenta.saldo or Decimal("0"))
+        if saldo < monto:
+            raise HTTPException(
+                status_code=409,
+                detail="Saldo insuficiente para cubrir el período.",
+            )
+
+        cuenta.saldo = saldo - monto
+
+        if estado_anterior == "VENCIDO":
+            deuda = Decimal(cuenta.deuda or Decimal("0"))
+            if deuda < monto:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Inconsistencia: la deuda es menor al pendiente del período.",
+                )
+            cuenta.deuda = deuda - monto
+
+    else:
+        if id_medio_pago is None:
+            raise HTTPException(
+                status_code=400,
+                detail="id_medio_pago es obligatorio salvo usar_saldo.",
+            )
+
+        tipo_pago = "PAGO_DEUDA" if estado_anterior == "VENCIDO" else "SERVICIO"
+
+        pago = PagoService.crear(
+            db,
+            id_empresa=1,
+            id_medio_pago=id_medio_pago,
+            fecha=datetime.now(),
+            monto=monto,
+            tipo_pago=tipo_pago,
+            observacion=observacion
+            or f"Pago alquiler dispenser {per.periodo.strftime('%Y-%m')}",
+            legajo=legajo,
+            id_cliente_servicio_periodo=per.id_periodo,
+            id_cuenta=cuenta.id_cuenta,
+            impactar_cuenta=(estado_anterior == "VENCIDO"),
+        )
+
     per.estado = "PAGADO"
     per.fecha_pago = date.today()
+    per.monto_pendiente = Decimal("0")
 
-    return pago
+    return pago, monto
 
 
 def actualizar_monto_servicio(
@@ -230,5 +362,7 @@ def actualizar_monto_servicio(
 
         for p in periodos:
             p.monto = nuevo_monto
+            if p.estado == "PENDIENTE":
+                p.monto_pendiente = nuevo_monto
 
     return srv
