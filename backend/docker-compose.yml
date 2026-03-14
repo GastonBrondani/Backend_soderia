@@ -32,7 +32,7 @@ services:
     env_file:
       - .env
     ports:
-      #- "8500:8000" Lo cambie porque mi maquina bloqueo el puerto 8500
+      #- "8500:8000" 
       - "127.0.0.1:8719:8000"
     depends_on:
       db:
