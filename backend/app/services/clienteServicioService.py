@@ -179,13 +179,9 @@ def listar_pendientes_cliente(db: Session, legajo: int):
 
 def marcar_vencidos(db: Session) -> int:
     hoy = date.today()
+
     stmt = (
-        select(ClienteServicioPeriodo, ClienteServicio.legajo)
-        .join(
-            ClienteServicio,
-            ClienteServicio.id_cliente_servicio
-            == ClienteServicioPeriodo.id_cliente_servicio,
-        )
+        select(ClienteServicioPeriodo)
         .where(
             ClienteServicioPeriodo.estado == "PENDIENTE",
             ClienteServicioPeriodo.fecha_vencimiento < hoy,
@@ -193,28 +189,11 @@ def marcar_vencidos(db: Session) -> int:
         .with_for_update()
     )
 
-    rows = db.execute(stmt).all()
+    periodos = db.execute(stmt).scalars().all()
     procesados = 0
 
-    for per, legajo in rows:
-        cuenta = _resolver_cuenta(db, legajo, id_cuenta=None, lock=True)
-
-        pendiente = Decimal(per.monto_pendiente or per.monto or Decimal("0"))
-        saldo = Decimal(cuenta.saldo or Decimal("0"))
-        deuda = Decimal(cuenta.deuda or Decimal("0"))
-
-        if saldo >= pendiente:
-            cuenta.saldo = saldo - pendiente
-            per.monto_pendiente = Decimal("0")
-            per.estado = "PAGADO"
-            per.fecha_pago = hoy
-        else:
-            faltante = pendiente - saldo
-            cuenta.saldo = Decimal("0")
-            cuenta.deuda = deuda + faltante
-            per.monto_pendiente = faltante
-            per.estado = "VENCIDO"
-
+    for per in periodos:
+        per.estado = "VENCIDO"
         procesados += 1
 
     return procesados
@@ -262,7 +241,6 @@ def pagar_periodo_servicio(
             detail="El período no tiene monto pendiente para cobrar.",
         )
 
-    estado_anterior = per.estado
     pago = None
 
     if usar_saldo:
@@ -275,15 +253,6 @@ def pagar_periodo_servicio(
 
         cuenta.saldo = saldo - monto
 
-        if estado_anterior == "VENCIDO":
-            deuda = Decimal(cuenta.deuda or Decimal("0"))
-            if deuda < monto:
-                raise HTTPException(
-                    status_code=409,
-                    detail="Inconsistencia: la deuda es menor al pendiente del período.",
-                )
-            cuenta.deuda = deuda - monto
-
     else:
         if id_medio_pago is None:
             raise HTTPException(
@@ -291,21 +260,19 @@ def pagar_periodo_servicio(
                 detail="id_medio_pago es obligatorio salvo usar_saldo.",
             )
 
-        tipo_pago = "PAGO_DEUDA" if estado_anterior == "VENCIDO" else "SERVICIO"
-
         pago = PagoService.crear(
             db,
             id_empresa=1,
             id_medio_pago=id_medio_pago,
             fecha=datetime.now(),
             monto=monto,
-            tipo_pago=tipo_pago,
+            tipo_pago="SERVICIO",
             observacion=observacion
             or f"Pago alquiler dispenser {per.periodo.strftime('%Y-%m')}",
             legajo=legajo,
             id_cliente_servicio_periodo=per.id_periodo,
             id_cuenta=cuenta.id_cuenta,
-            impactar_cuenta=(estado_anterior == "VENCIDO"),
+            impactar_cuenta=False,
         )
 
     per.estado = "PAGADO"
@@ -366,3 +333,14 @@ def actualizar_monto_servicio(
                 p.monto_pendiente = nuevo_monto
 
     return srv
+
+def listar_servicios_cliente(db: Session, legajo: int):
+    return (
+        db.execute(
+            select(ClienteServicio)
+            .where(ClienteServicio.legajo == legajo)
+            .order_by(ClienteServicio.id_cliente_servicio.desc())
+        )
+        .scalars()
+        .all()
+    )

@@ -8,8 +8,9 @@ from app.services.clienteServicioService import (
     listar_pendientes_cliente,
     pagar_periodo_servicio,
     actualizar_monto_servicio,
+    listar_servicios_cliente,
 )
-from app.schemas.servicios import ServicioMontoUpdate
+from app.schemas.servicios import ServicioMontoUpdate, ClienteServicioOut
 
 router = APIRouter(prefix="/servicios", tags=["Servicios"])
 
@@ -18,24 +19,10 @@ router = APIRouter(prefix="/servicios", tags=["Servicios"])
 def alta_alquiler_dispenser(
     legajo: int,
     monto_mensual: Decimal,
-    usar_saldo: bool = False,
-    id_medio_pago: int | None = None,
-    id_cuenta: int | None = None,
-    observacion: str | None = None,
     db: Session = Depends(get_db),
 ):
     with db.begin():
         srv, per = crear_servicio_alquiler_dispenser(db, legajo, monto_mensual)
-
-        pago, monto = pagar_periodo_servicio(
-            db,
-            per.id_periodo,
-            legajo,
-            id_medio_pago=id_medio_pago,
-            observacion=observacion or "Alta alquiler dispenser",
-            id_cuenta=id_cuenta,
-            usar_saldo=usar_saldo,
-        )
 
     return {
         "ok": True,
@@ -43,9 +30,8 @@ def alta_alquiler_dispenser(
         "id_periodo": per.id_periodo,
         "estado_periodo": per.estado,
         "periodo": per.periodo.isoformat(),
-        "id_pago": pago.id_pago if pago else None,
-        "monto": str(monto),
-        "medio": "saldo" if usar_saldo else "medio_pago",
+        "monto_mensual": str(srv.monto_mensual),
+        "monto_pendiente": str(per.monto_pendiente),
     }
 
 
@@ -53,6 +39,12 @@ def alta_alquiler_dispenser(
 def pendientes(legajo: int, db: Session = Depends(get_db)):
     return listar_pendientes_cliente(db, legajo)
 
+@router.get("/clientes/{legajo}", response_model=list[ClienteServicioOut])
+def get_servicios_cliente(
+    legajo: int,
+    db: Session = Depends(get_db),
+):
+    return listar_servicios_cliente(db, legajo)
 
 @router.post("/periodos/{id_periodo}/pagar")
 def pagar(
