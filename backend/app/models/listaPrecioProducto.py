@@ -8,45 +8,38 @@ if TYPE_CHECKING:
 
 from sqlalchemy import Integer, Numeric, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class ListaPrecioProducto(Base):
     __tablename__ = "lista_precio_producto"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
-    # PK compuesta: (id_lista, id_producto)
+    #PKs
     id_lista: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey(f"{SCHEMA}.lista_de_precios.id_lista", name="fk_listaprecio_lista"),
+        ForeignKey("lista_de_precios.id_lista"),
         primary_key=True,
         nullable=False,
     )
     id_producto: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey(f"{SCHEMA}.producto.id_producto", name="fk_listaprecio_producto"),
+        ForeignKey("producto.id_producto"),
         primary_key=True,
         nullable=False,
     )
 
-    # Campos
-    precio: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    #Campos
+    precio: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
 
-    # --------- RELATIONSHIPS (completas) ---------
-    # many-to-one -> ListaDePrecios
+    #Relaciones
     lista: Mapped["ListaDePrecios"] = relationship(
-        "ListaDePrecios",
-        back_populates="productos",
-        lazy="selectin",
+        "ListaDePrecios",back_populates="lista_productos"
     )
-
-    # many-to-one -> Producto
     producto: Mapped["Producto"] = relationship(
-        "Producto",
-        back_populates="listas_precios",  # en Producto: listas_precios = relationship("ListaPrecioProducto", back_populates="producto")
-        lazy="selectin",
+        "Producto",back_populates="listas_precios"
     )
 
     def __repr__(self) -> str:

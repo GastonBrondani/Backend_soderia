@@ -1,8 +1,8 @@
-"""baseline schema (pre-existing)
+"""merge heads after team changes
 
-Revision ID: 3696d56d07bb
-Revises: 
-Create Date: 2025-08-25 19:01:37.728168
+Revision ID: 4655a1768523
+Revises: 610598a8b6eb, b1384d646dc5
+Create Date: 2025-12-24 18:45:56.563476
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '3696d56d07bb'
-down_revision: Union[str, Sequence[str], None] = None
+revision: str = '4655a1768523'
+down_revision: Union[str, Sequence[str], None] = ('610598a8b6eb', 'b1384d646dc5')
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

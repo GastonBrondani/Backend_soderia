@@ -8,7 +8,7 @@ from .cuentaBancariaEmpresa import CuentaBancariaEmpresa
 from .diaSemana import DiaSemana
 from .direccionCliente import DireccionCliente
 from .documentos import Documentos
-from .emailCliente import EmailCliente
+from .emailCliente import MailCliente
 from .empleado import Empleado
 from .empresa import Empresa
 from .historico import Historico
@@ -30,13 +30,55 @@ from .tipoEvento import TipoEvento
 from .tipoMovimientoCaja import TipoMovimientoCaja
 from .usuario import Usuario
 from .usuarioRol import UsuarioRol
+from .visita import Visita
+from .combo import Combo
+from .comboProducto import ComboProducto
+from .listaPrecioCombo import ListaPrecioCombo
+from .pago import Pago
+from .clienteServicio import ClienteServicio
+from .clienteServicioPeriodo import ClienteServicioPeriodo
+from .listaPrecioServicio import ListaPrecioServicio
+
 
 __all__ = [
-    "CajaEmpresa", "CamionReparto", "Cliente", "ClienteCuenta", "ClienteDiaSemana",
-    "ClienteRepartoDia", "CuentaBancariaEmpresa", "DiaSemana", "DireccionCliente",
-    "Documentos", "EmailCliente", "Empleado", "Empresa", "Historico",
-    "ListaDePrecios", "ListaPrecioProducto", "MedioPago", "MovimientoStock",
-    "Pedido", "PedidoProducto", "Persona", "Producto", "ProductoCliente",
-    "Recorrido", "RepartoDia", "Rol", "Stock", "TelefonoCliente",
-    "TipoEvento", "TipoMovimientoCaja", "Usuario", "UsuarioRol"
+    "CajaEmpresa",
+    "CamionReparto",
+    "Cliente",
+    "ClienteCuenta",
+    "ClienteDiaSemana",
+    "ClienteRepartoDia",
+    "CuentaBancariaEmpresa",
+    "DiaSemana",
+    "DireccionCliente",
+    "Documentos",
+    "MailCliente",
+    "Empleado",
+    "Empresa",
+    "Historico",
+    "ListaDePrecios",
+    "ListaPrecioProducto",
+    "MedioPago",
+    "MovimientoStock",
+    "Pedido",
+    "PedidoProducto",
+    "Persona",
+    "Producto",
+    "ProductoCliente",
+    "Recorrido",
+    "RepartoDia",
+    "Rol",
+    "Stock",
+    "TelefonoCliente",
+    "TipoEvento",
+    "TipoMovimientoCaja",
+    "Usuario",
+    "UsuarioRol",
+    "Visita",
+    "Combo",
+    "ComboProducto",
+    "ListaPrecioCombo",
+    "Pago",
+    "ClienteServicio",
+    "ClienteServicioPeriodo",
+    "ListaPrecioServicio",
 ]

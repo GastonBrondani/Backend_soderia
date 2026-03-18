@@ -1,49 +1,46 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .empresa import Empresa
     from .recorrido import Recorrido
 
-from sqlalchemy import String, Integer, Boolean, ForeignKey, text
+from sqlalchemy import String, Boolean, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.database import Base
+from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class CamionReparto(Base):
     __tablename__ = "camion_reparto"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
-    # PK
-    patente: Mapped[str] = mapped_column(String(10), primary_key=True)
+    #PK
+    patente: Mapped[str] = mapped_column(String(20), primary_key=True)
 
-    # FK -> empresa.id_empresa
+    #FK
     id_empresa: Mapped[int] = mapped_column(
-        ForeignKey(f"{SCHEMA}.empresa.id_empresa", name="fk_camion_empresa"),
+        ForeignKey("empresa.id_empresa"),
         nullable=False,
     )
 
-    # activo boolean default true
-    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    #Campos
+    activo: Mapped[bool | None] = mapped_column(Boolean, server_default=text("true"))
 
-    # --------- RELATIONSHIPS (completas) ---------
-    # many-to-one -> Empresa
+    #Relaciones
     empresa: Mapped["Empresa"] = relationship(
         "Empresa",
         back_populates="camiones_reparto",
-        lazy="selectin",
+        
     )
-
-    # one-to-many <- Recorrido (FK recorrido.patente -> camion_reparto.patente)
-    recorridos: Mapped[List["Recorrido"]] = relationship(
+    
+    recorridos: Mapped["Recorrido"] = relationship(
         "Recorrido",
-        back_populates="camion",
-        lazy="selectin",
-        cascade="all, delete-orphan",  # quita esta línea si no querés borrar recorridos al borrar el camión
-        passive_deletes=False,
+        back_populates="camion_reparto",
+        
+        
     )
 
     def __repr__(self) -> str:

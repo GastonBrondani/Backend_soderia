@@ -6,35 +6,32 @@ if TYPE_CHECKING:
 
 from sqlalchemy import Integer, String, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class TelefonoCliente(Base):
     __tablename__ = "telefono_cliente"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
-    # PK (serial)
+    #PK
     id_telefono: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    # FK -> cliente.legajo
+    #FK
     legajo: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey(f"{SCHEMA}.cliente.legajo", name="fk_telefono_cliente_cliente"),
+        ForeignKey("cliente.legajo", ondelete="CASCADE"),
         nullable=False,
     )
 
-    # Campos
-    nro_telefono: Mapped[str] = mapped_column(String(20), nullable=False)
-    estado: Mapped[str] = mapped_column(String(20), nullable=False)
+    #Campos
+    nro_telefono: Mapped[Optional[str]] = mapped_column(String(50))
+    estado: Mapped[Optional[str]] = mapped_column(String(20))
     observacion: Mapped[Optional[str]] = mapped_column(Text)
 
-    # --------- RELATIONSHIPS (completa) ---------
+    #Relación
     cliente: Mapped["Cliente"] = relationship(
-        "Cliente",
-        back_populates="telefonos",  # en Cliente: telefonos = relationship("TelefonoCliente", back_populates="cliente")
-        lazy="selectin",
+        "Cliente",back_populates="telefonos"
     )
 
     def __repr__(self) -> str:

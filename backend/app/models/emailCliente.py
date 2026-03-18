@@ -6,36 +6,33 @@ if TYPE_CHECKING:
 
 from sqlalchemy import Integer, String, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
-class EmailCliente(Base):
-    __tablename__ = "email_cliente"
-    __table_args__ = ({"schema": SCHEMA},)
+class MailCliente(Base):
+    __tablename__ = "mail_cliente"
+    #__table_args__ = ({"schema": SCHEMA},)
 
-    # PK (serial)
-    id_email: Mapped[int] = mapped_column(Integer, primary_key=True)
+    #PK
+    id_mail: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    # FK -> cliente.legajo
+    #FK
     legajo: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey(f"{SCHEMA}.cliente.legajo", name="fk_email_cliente_cliente"),
+        ForeignKey("cliente.legajo", ondelete="CASCADE"),
         nullable=False,
     )
 
-    # Campos
-    email: Mapped[str] = mapped_column(String(100), nullable=False)
-    estado: Mapped[str] = mapped_column(String(20), nullable=False)
+    #Campos
+    mail: Mapped[Optional[str]] = mapped_column(String(150))
+    estado: Mapped[Optional[str]] = mapped_column(String(20))
     observacion: Mapped[Optional[str]] = mapped_column(Text)
 
-    # --------- RELATIONSHIPS ---------
+    #Relaciones
     cliente: Mapped["Cliente"] = relationship(
-        "Cliente",
-        back_populates="emails",
-        lazy="selectin",
+        "Cliente",back_populates="emails"
     )
 
     def __repr__(self) -> str:
-        return f"<EmailCliente id={self.id_email} legajo={self.legajo} email={self.email}>"
+        return f"<MailCliente id={self.id_mail} legajo={self.legajo} mail={self.mail}>"

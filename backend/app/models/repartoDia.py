@@ -7,71 +7,58 @@ if TYPE_CHECKING:
     from .empresa import Empresa
     from .usuario import Usuario
     from .clienteRepartoDia import ClienteRepartoDia
-    from .pedido import Pedido
     from .recorrido import Recorrido
+    from .pedido import Pedido
 
 from sqlalchemy import Integer, Date, Numeric, Text, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class RepartoDia(Base):
     __tablename__ = "reparto_dia"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
-    # PK
-    id_reparto_dia: Mapped[int] = mapped_column(
-        Integer, primary_key=True
+    #PK
+    id_repartodia: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    #FKs
+    id_usuario: Mapped[int] = mapped_column(
+        ForeignKey("usuario.id_usuario"),
+        nullable=False,
+    )
+    id_empresa: Mapped[int] = mapped_column(
+        ForeignKey("empresa.id_empresa"),
+        nullable=False,
     )
 
-    # Campos
-    fecha: Mapped[date] = mapped_column(
-        Date, nullable=False, server_default=text("CURRENT_DATE")
-    )
-    total_recaudado: Mapped[Decimal] = mapped_column(
-        Numeric(12, 2), nullable=False, server_default=text("0.00")
-    )
-    total_efectivo: Mapped[Decimal] = mapped_column(
-        Numeric(12, 2), nullable=False, server_default=text("0.00")
-    )
-    total_virtual: Mapped[Decimal] = mapped_column(
-        Numeric(12, 2), nullable=False, server_default=text("0.00")
-    )
+    #Campos
+    fecha: Mapped[date] = mapped_column(Date, nullable=False)  
+    total_recaudado: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 2), server_default=text("0"))
+    total_efectivo: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 2), server_default=text("0"))
+    total_virtual: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 2), server_default=text("0"))
     observacion: Mapped[Optional[str]] = mapped_column(Text)
 
-    # FKs
-    id_usuario: Mapped[Optional[int]] = mapped_column(
-        Integer,
-        ForeignKey(f"{SCHEMA}.usuario.id_usuario", name="fk_reparto_usuario", ondelete="SET NULL"),
-        nullable=True,
+    #Relaciones
+    empresa: Mapped["Empresa"] = relationship(
+        "Empresa", back_populates="repartos_dias"
     )
-    id_empresa: Mapped[Optional[int]] = mapped_column(
-        Integer,
-        ForeignKey(f"{SCHEMA}.empresa.id_empresa", name="fk_reparto_empresa"),
-        nullable=True,
+    usuario: Mapped["Usuario"] = relationship(
+        "Usuario", back_populates="reparto_dia"
     )
-
-    # ---------- RELATIONSHIPS ----------
-    empresa: Mapped[Optional["Empresa"]] = relationship(
-        "Empresa", back_populates="repartos_dia", lazy="selectin"
-    )    
-
-    clientes_reparto: Mapped[List["ClienteRepartoDia"]] = relationship(
-        "ClienteRepartoDia", back_populates="reparto_dia", lazy="selectin"
-    )
-    pedidos: Mapped[List["Pedido"]] = relationship(
-        "Pedido", back_populates="reparto_dia", lazy="selectin"
+    reparto_clientes: Mapped[List["ClienteRepartoDia"]] = relationship(
+        "ClienteRepartoDia", back_populates="reparto_dia"
     )
     recorridos: Mapped[List["Recorrido"]] = relationship(
-        "Recorrido", back_populates="reparto_dia", lazy="selectin"
+        "Recorrido", back_populates="reparto_dia"
     )
-    usuario: Mapped["Usuario | None"] = relationship(
-        "Usuario",
-        back_populates="reparto_dias",
-        lazy="selectin",
+    pedidos: Mapped[List["Pedido"]] = relationship(
+    "Pedido",
+    back_populates="reparto_dia",
+    passive_deletes=True
     )
 
     def __repr__(self) -> str:
-        return f"<RepartoDia id={self.id_reparto_dia} fecha={self.fecha}>"
+        return f"<RepartoDia id={self.id_repartodia} fecha={self.fecha}>"

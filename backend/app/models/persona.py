@@ -4,41 +4,33 @@ from typing import TYPE_CHECKING, List
 if TYPE_CHECKING:
     from .cliente import Cliente
     from .empleado import Empleado
-    from .usuario import Usuario
 
-from sqlalchemy import String
+from sqlalchemy import String, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class Persona(Base):
     __tablename__ = "persona"
-    __table_args__ = {"schema": SCHEMA}
+    #__table_args__ = {"schema": SCHEMA}
 
-    # PK
-    dni: Mapped[str] = mapped_column(String(20), primary_key=True)
+    #PK
+    dni: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
-    # Campos
-    nombre: Mapped[str] = mapped_column(String(100), nullable=False)
+    #Campos
     apellido: Mapped[str] = mapped_column(String(100), nullable=False)
+    nombre: Mapped[str] = mapped_column(String(100), nullable=False)
+    
 
-    # --------- RELATIONSHIPS (completas) ---------
+    #Relaciones
     clientes: Mapped[List["Cliente"]] = relationship(
-        "Cliente", back_populates="persona", lazy="selectin"
+        "Cliente",back_populates="persona",passive_deletes=True,
     )
-    empleados: Mapped[List["Empleado"]] = relationship(
-        "Empleado", back_populates="persona", lazy="selectin"
-    )
-    #usuarios: Mapped[List["Usuario"]] = relationship(
-    #    "Usuario", back_populates="persona", lazy="selectin"
-    #)
-    usuarios: Mapped[List["Usuario"]] = relationship(
-        "Usuario",
-        back_populates="persona",
-        lazy="selectin",
-        primaryjoin="Persona.dni==foreign(Usuario.dni)",
+    
+    empleado: Mapped["Empleado"] = relationship(
+        "Empleado",back_populates="persona"
     )
 
     def __repr__(self) -> str:

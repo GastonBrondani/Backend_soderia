@@ -14,8 +14,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import app.models
 
 # Importá tu Base (metadatos) y, si querés, tu engine
-from app.database import Base
-from app.database import engine
+from app.core.database import Base
+from app.core.database import engine
 
 # Configuración de Alembic
 config = context.config
@@ -42,8 +42,7 @@ def run_migrations_offline() -> None:
                       literal_binds=True,
                       dialect_opts={"paramstyle": "named"},
                       compare_type=True,
-                      include_schemas=True,
-                      version_table_schema="soderia",
+                      include_schemas=False,                      
                       include_object=include_object,
                       version_table="alembic_version",
     )
@@ -62,8 +61,7 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,
-            include_schemas=True,
-            version_table_schema="soderia",
+            include_schemas=False,            
             include_object=include_object,
             version_table="alembic_version",
         )

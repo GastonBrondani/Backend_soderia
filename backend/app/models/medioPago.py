@@ -1,36 +1,33 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .cajaEmpresa import CajaEmpresa
     from .pedido import Pedido
 
-from sqlalchemy import Integer, String, UniqueConstraint
+from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class MedioPago(Base):
     __tablename__ = "medio_pago"
-    __table_args__ = (
-        UniqueConstraint("nombre", name="medio_pago_nombre_key"),
-        {"schema": SCHEMA},
-    )
+    #__table_args__ = {"schema": SCHEMA}
 
-    # PK (serial)
+    #PK
     id_medio_pago: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    # Campos
+    #Campos
     nombre: Mapped[str] = mapped_column(String(50), nullable=False)
 
-    # --------- RELATIONSHIPS (completas) ---------
-    caja_empresas: Mapped[List["CajaEmpresa"]] = relationship(
-        "CajaEmpresa", back_populates="medio_pago", lazy="selectin"
+    #Relaciones
+    caja_empresa: Mapped["CajaEmpresa"] = relationship(
+        "CajaEmpresa", back_populates="medio_pago"
     )
-    pedidos: Mapped[List["Pedido"]] = relationship(
-        "Pedido", back_populates="medio_pago", lazy="selectin"
+    pedido: Mapped["Pedido"] = relationship(
+        "Pedido", back_populates="medio_pagos"
     )
 
     def __repr__(self) -> str:

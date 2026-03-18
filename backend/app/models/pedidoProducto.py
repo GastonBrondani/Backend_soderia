@@ -1,54 +1,36 @@
 from __future__ import annotations
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from .pedido import Pedido
     from .producto import Producto
+    from .combo import Combo
 
-from sqlalchemy import Integer, Numeric, ForeignKey, text
+from sqlalchemy import Integer, Numeric, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class PedidoProducto(Base):
     __tablename__ = "pedido_producto"
-    __table_args__ = ({"schema": SCHEMA},)
 
-    # PK compuesta: (id_pedido, id_producto)
-    id_pedido: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey(f"{SCHEMA}.pedido.id_pedido", name="fk_pedido_producto_pedido"),
-        primary_key=True,
-        nullable=False,
-    )
-    id_producto: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey(f"{SCHEMA}.producto.id_producto", name="fk_pedido_producto_producto"),
-        primary_key=True,
-        nullable=False,
-    )
+    id_pedido_producto: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    # Campos
-    cantidad: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
-    precio_unitario: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    id_pedido: Mapped[int] = mapped_column(ForeignKey("pedido.id_pedido"), nullable=False)
 
-    # --------- RELATIONSHIPS (completas) ---------
-    pedido: Mapped["Pedido"] = relationship(
-        "Pedido",
-        back_populates="items",
-        lazy="selectin",
-    )
-    producto: Mapped["Producto"] = relationship(
-        "Producto",
-        back_populates="pedido_items",  # en Producto: pedido_items = relationship("PedidoProducto", back_populates="producto")
-        lazy="selectin",
-    )
+    id_producto: Mapped[Optional[int]] = mapped_column(ForeignKey("producto.id_producto"), nullable=True)
+    id_combo: Mapped[Optional[int]] = mapped_column(ForeignKey("combo.id_combo"), nullable=True)
+
+    cantidad: Mapped[int] = mapped_column(Integer, nullable=False)
+    precio_unitario: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+
+    pedido: Mapped["Pedido"] = relationship("Pedido", back_populates="pedidos_productos")
+    producto: Mapped[Optional["Producto"]] = relationship("Producto", back_populates="pedidos_productos")
+    combo: Mapped[Optional["Combo"]] = relationship("Combo", back_populates="pedidos_productos")
 
     def __repr__(self) -> str:
-        return (
-            f"<PedidoProducto pedido={self.id_pedido} "
-            f"producto={self.id_producto} cant={self.cantidad} precio={self.precio_unitario}>"
-        )
+        ref = f"producto={self.id_producto}" if self.id_producto is not None else f"combo={self.id_combo}"
+        return f"<PedidoProducto id={self.id_pedido_producto} pedido={self.id_pedido} {ref} cant={self.cantidad} precio={self.precio_unitario}>"

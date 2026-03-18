@@ -8,63 +8,57 @@ if TYPE_CHECKING:
     from .camionReparto import CamionReparto
     from .movimientoStock import MovimientoStock
 
-from sqlalchemy import Integer, String, Numeric, Text, ForeignKey, text
+from sqlalchemy import Integer, String, Numeric, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class Recorrido(Base):
     __tablename__ = "recorrido"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
-    # PK (serial)
+    #PK
     id_recorrido: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    # FKs
+    #FKs
     id_empleado: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey(f"{SCHEMA}.empleado.legajo", name="fk_recorrido_empleado"),
-        nullable=False,
+        ForeignKey("empleado.legajo"), nullable=False
     )
-    id_reparto_dia: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey(f"{SCHEMA}.reparto_dia.id_reparto_dia", name="fk_recorrido_reparto_dia"),
-        nullable=False,
+    id_repartodia: Mapped[int] = mapped_column(     
+        ForeignKey("reparto_dia.id_repartodia"), nullable=False
     )
-    patente: Mapped[str] = mapped_column(
-        String(10),
-        ForeignKey(f"{SCHEMA}.camion_reparto.patente", name="fk_recorrido_camion"),
+    id_camion: Mapped[str] = mapped_column(         
+        String(20),
+        ForeignKey("camion_reparto.patente"),
         nullable=False,
     )
 
-    # Campos
-    dinero_inicial: Mapped[Decimal] = mapped_column(
-        Numeric(12, 2), nullable=False, server_default=text("0.00")
-    )
-    stock_inicial: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    #Campos
+    dinero_inicial: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 2))
+    stock_inicial: Mapped[Optional[int]] = mapped_column(Integer)
     observacion: Mapped[Optional[str]] = mapped_column(Text)
 
-    # --------- RELATIONSHIPS (completas) ---------
+    #Relaciones
     empleado: Mapped["Empleado"] = relationship(
-        "Empleado", back_populates="recorridos", lazy="selectin"
-    )
-    reparto_dia: Mapped["RepartoDia"] = relationship(
-        "RepartoDia", back_populates="recorridos", lazy="selectin"
-    )
-    camion: Mapped["CamionReparto"] = relationship(
-        "CamionReparto", back_populates="recorridos", lazy="selectin"
+        "Empleado", back_populates="recorrido"
     )
 
+    reparto_dia: Mapped["RepartoDia"] = relationship(
+        "RepartoDia", back_populates="recorridos"
+    )
+
+    camion_reparto: Mapped["CamionReparto"] = relationship(
+        "CamionReparto", back_populates="recorridos"
+    )
+    
     movimientos_stock: Mapped[List["MovimientoStock"]] = relationship(
-        "MovimientoStock", back_populates="recorrido", lazy="selectin"
+        "MovimientoStock", back_populates="recorrido"
     )
 
     def __repr__(self) -> str:
         return (
             f"<Recorrido id={self.id_recorrido} emp={self.id_empleado} "
-            f"reparto={self.id_reparto_dia} patente={self.patente}>"
+            f"reparto={self.id_repartodia} camion={self.id_camion}>"
         )

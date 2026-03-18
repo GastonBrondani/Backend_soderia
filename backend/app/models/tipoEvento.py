@@ -6,26 +6,24 @@ if TYPE_CHECKING:
 
 from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class TipoEvento(Base):
     __tablename__ = "tipo_evento"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
-    # PK (serial)
+    #PK
     id_evento: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    # Campos
+    #Campos
     nombre: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    # --------- RELATIONSHIPS (completa) ---------
+    #Relaciones
     historicos: Mapped[List["Historico"]] = relationship(
-        "Historico",
-        back_populates="tipo_evento",  # en Historico: tipo_evento = relationship("TipoEvento", back_populates="historicos")
-        lazy="selectin",
+        "Historico", back_populates="tipo_evento"
     )
 
     def __repr__(self) -> str:

@@ -8,44 +8,51 @@ if TYPE_CHECKING:
 
 from sqlalchemy import Integer, String, Text, Numeric, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class ClienteRepartoDia(Base):
     __tablename__ = "cliente_reparto_dia"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
-    # PK compuesta: (id_reparto_dia, legajo)
-    id_reparto_dia: Mapped[int] = mapped_column(
+    #PK
+    id_repartodia: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey(f"{SCHEMA}.reparto_dia.id_reparto_dia", name="fk_cliente_reparto_dia"),
+        ForeignKey("reparto_dia.id_repartodia"),
         primary_key=True,
+        nullable=False,
     )
     legajo: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey(f"{SCHEMA}.cliente.legajo", name="fk_cliente_reparto_cliente"),
+        ForeignKey("cliente.legajo", ondelete="CASCADE"),
         primary_key=True,
+        nullable=False,
     )
 
-    # Campos
-    bidones_entregados: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
+    #Campos
+    bidones_entregado: Mapped[Optional[int]] = mapped_column(
+        Integer, server_default=text("0")
     )
-    monto_abonado: Mapped[Decimal] = mapped_column(
-        Numeric(10, 2), nullable=False, server_default=text("0.00")
+    monto_abonado: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(14, 2), server_default=text("0")
     )
-    estado_visita: Mapped[str] = mapped_column(String(30), nullable=False)
-    turno_visita: Mapped[str] = mapped_column(String(20), nullable=False)
+    estado_de_la_visita: Mapped[Optional[str]] = mapped_column(String(30))
+    turno_de_la_visita: Mapped[Optional[str]] = mapped_column(String(20))
     observacion: Mapped[Optional[str]] = mapped_column(Text)
 
-    # --------- RELATIONSHIPS (completas para esta tabla) ---------
-    cliente: Mapped["Cliente"] = relationship("Cliente", lazy="selectin")
-    reparto_dia: Mapped["RepartoDia"] = relationship("RepartoDia", lazy="selectin")
+    #Relaciones
+    reparto_dia: Mapped["RepartoDia"] = relationship(
+        "RepartoDia",back_populates="reparto_clientes"
+    )
+    cliente: Mapped["Cliente"] = relationship(
+        "Cliente",back_populates="repartos_dias"
+    )
 
     def __repr__(self) -> str:
         return (
-            f"<ClienteRepartoDia reparto={self.id_reparto_dia} "
-            f"legajo={self.legajo} estado={self.estado_visita} turno={self.turno_visita}>"
+            f"<ClienteRepartoDia reparto={self.id_repartodia} "
+            f"legajo={self.legajo} estado={self.estado_de_la_visita} "
+            f"turno={self.turno_de_la_visita}>"
         )

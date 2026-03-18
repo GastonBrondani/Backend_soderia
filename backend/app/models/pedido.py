@@ -7,85 +7,80 @@ if TYPE_CHECKING:
     from .cliente import Cliente
     from .empresa import Empresa
     from .medioPago import MedioPago
-    from .repartoDia import RepartoDia
-    from .historico import Historico
     from .movimientoStock import MovimientoStock
     from .pedidoProducto import PedidoProducto
+    from .repartoDia import RepartoDia
+    
 
-from sqlalchemy import (
-    Integer, String, Text, Numeric, DateTime,
-    ForeignKey, text
-)
+from sqlalchemy import Integer, String, Text, Numeric, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+from app.core.database import Base
 
-SCHEMA = "soderia"
+#SCHEMA = "soderia"
 
 
 class Pedido(Base):
     __tablename__ = "pedido"
-    __table_args__ = ({"schema": SCHEMA},)
+    #__table_args__ = ({"schema": SCHEMA},)
 
-    # PK
+    #PK
     id_pedido: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    # FKs
+    #FKs
     legajo: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey(f"{SCHEMA}.cliente.legajo", name="fk_pedido_cliente"),
+        ForeignKey("cliente.legajo", ondelete="CASCADE"),
         nullable=False,
     )
-    id_medio_pago: Mapped[Optional[int]] = mapped_column(
-        Integer,
-        ForeignKey(f"{SCHEMA}.medio_pago.id_medio_pago", name="fk_pedido_medio_pago"),
+    id_medio_pago: Mapped[int] = mapped_column(
+        ForeignKey("medio_pago.id_medio_pago"),
+        nullable=False,
+    )
+    id_empresa: Mapped[int] = mapped_column(
+        ForeignKey("empresa.id_empresa"),
+        nullable=False,
+    )
+    id_repartodia: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("reparto_dia.id_repartodia"),
         nullable=True,
     )
-    id_empresa: Mapped[Optional[int]] = mapped_column(
-        Integer,
-        ForeignKey(f"{SCHEMA}.empresa.id_empresa", name="fk_pedido_empresa"),
-        nullable=True,
-    )
-    id_reparto_dia: Mapped[Optional[int]] = mapped_column(
-        Integer,
-        ForeignKey(f"{SCHEMA}.reparto_dia.id_reparto_dia", name="fk_pedido_reparto_dia"),
+    id_cuenta: Mapped[int | None] = mapped_column(
+        ForeignKey("cliente_cuenta.id_cuenta"),
         nullable=True,
     )
 
-    # Campos
-    fecha: Mapped[datetime] = mapped_column(
-        DateTime(timezone=False),
+
+    #Campos
+    fecha: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False)
+    monto_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    monto_abonado: Mapped[Decimal] = mapped_column(Numeric(14, 2), server_default="0")
+    estado: Mapped[str] = mapped_column(
+        String(30),
         nullable=False,
-        server_default=text("CURRENT_TIMESTAMP"),
+        default="pendiente",
+        server_default="pendiente",
     )
-    monto_total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    monto_abonado: Mapped[Decimal] = mapped_column(
-        Numeric(12, 2), nullable=False, server_default=text("0.00")
-    )
-    estado: Mapped[str] = mapped_column(String(30), nullable=False)
     observacion: Mapped[Optional[str]] = mapped_column(Text)
 
-    # --------- RELATIONSHIPS (completas) ---------
+    #Relaciones
     cliente: Mapped["Cliente"] = relationship(
-        "Cliente", back_populates="pedidos", lazy="selectin"
+        "Cliente", back_populates="pedidos"
+        )
+    medio_pagos: Mapped[List["MedioPago"]] = relationship(
+        "MedioPago", back_populates="pedido"
     )
-    medio_pago: Mapped[Optional["MedioPago"]] = relationship(
-        "MedioPago", back_populates="pedidos", lazy="selectin"
-    )
-    empresa: Mapped[Optional["Empresa"]] = relationship(
-        "Empresa", back_populates="pedidos", lazy="selectin"
-    )
-    reparto_dia: Mapped[Optional["RepartoDia"]] = relationship(
-        "RepartoDia", back_populates="pedidos", lazy="selectin"
+    
+    empresa: Mapped["Empresa"] = relationship(
+        "Empresa", back_populates="pedidos"
     )
 
-    historicos: Mapped[List["Historico"]] = relationship(
-        "Historico", back_populates="pedido", lazy="selectin"
-    )
     movimientos_stock: Mapped[List["MovimientoStock"]] = relationship(
-        "MovimientoStock", back_populates="pedido", lazy="selectin"
+        "MovimientoStock", back_populates="pedido"
     )
-    items: Mapped[List["PedidoProducto"]] = relationship(
-        "PedidoProducto", back_populates="pedido", lazy="selectin"
+    pedidos_productos: Mapped[List["PedidoProducto"]] = relationship(
+        "PedidoProducto", back_populates="pedido"
+    )
+    reparto_dia: Mapped[Optional["RepartoDia"]] = relationship(
+    "RepartoDia", back_populates="pedidos"
     )
 
     def __repr__(self) -> str:
