@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException,status
+from app.core.security import get_current_user
 from typing import List
 from sqlalchemy.orm import Session,selectinload
 from sqlalchemy import select
@@ -8,7 +9,7 @@ from app.models.persona import Persona
 from app.schemas.empleado import EmpleadoCreate, EmpleadoOut, EmpleadoUpdate
 
 
-router = APIRouter(prefix="/empleados", tags=["Empleados"])
+router = APIRouter(prefix="/empleados", tags=["Empleados"],dependencies=[Depends(get_current_user)],)
 
 @router.post("/", response_model=EmpleadoOut, status_code=status.HTTP_201_CREATED)
 def CrearEmpleado(payload: EmpleadoCreate, db: Session = Depends(get_db)):

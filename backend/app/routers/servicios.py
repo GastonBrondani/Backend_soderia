@@ -1,5 +1,6 @@
 from decimal import Decimal
 from fastapi import APIRouter, Depends
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -12,7 +13,7 @@ from app.services.clienteServicioService import (
 )
 from app.schemas.servicios import ServicioMontoUpdate, ClienteServicioOut
 
-router = APIRouter(prefix="/servicios", tags=["Servicios"])
+router = APIRouter(prefix="/servicios", tags=["Servicios"],dependencies=[Depends(get_current_user)],)
 
 
 @router.post("/clientes/{legajo}/alquiler-dispenser")

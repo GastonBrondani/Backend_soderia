@@ -19,11 +19,12 @@ from app.models.usuario import Usuario
 ALGORITHM = "pbkdf2_sha256"
 ITERATIONS = 100_000
 
-# JWT config (compartido con auth)
 SECRET_KEY = os.getenv(
     "SECRET_KEY", "CAMBIA_ESTA_CLAVE_POR_ALGO_LARGO_Y_SECRETO"
 )
 JWT_ALGORITHM = "HS256"
+
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
@@ -35,10 +36,6 @@ class CurrentUser:
 
 
 def hash_password(raw: str) -> str:
-    """
-    Genera un hash PBKDF2-SHA256.
-    Formato: pbkdf2_sha256$iteraciones$salt$hashhex
-    """
     salt = secrets.token_hex(16)
     dk = hashlib.pbkdf2_hmac(
         "sha256",
@@ -50,9 +47,6 @@ def hash_password(raw: str) -> str:
 
 
 def verify_password(raw: str, hashed: str) -> bool:
-    """
-    Verifica una contraseña en texto plano contra un hash PBKDF2.
-    """
     try:
         algorithm, iterations_str, salt, hash_hex = hashed.split("$", 3)
     except ValueError:
@@ -89,7 +83,6 @@ def get_current_user(
         payload = jwt.decode(token, SECRET_KEY, algorithms=[JWT_ALGORITHM])
         sub = payload.get("sub")
         nombre_usuario = payload.get("nombre_usuario")
-        roles = payload.get("roles", []) or []
     except JWTError:
         raise cred_exc
 
@@ -105,9 +98,8 @@ def get_current_user(
     if user is None:
         raise cred_exc
 
-    # En tokens emitidos antes de roles, roles vendrá vacío
-    if not roles:
-        roles = [ur.rol.nombre for ur in user.usuario_roles] if user.usuario_roles else []
+    # SIEMPRE leer roles actuales desde DB
+    roles = [ur.rol.nombre for ur in user.usuario_roles] if user.usuario_roles else []
 
     return CurrentUser(
         id_usuario=user.id_usuario,
@@ -117,13 +109,20 @@ def get_current_user(
 
 
 def require_roles(*permitidos: str):
+    permitidos_set = {rol.upper() for rol in permitidos}
+
     def wrapper(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
-        if permitidos:
-            if not set(user.roles).intersection(set(permitidos)):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="No tienes permisos para esta operación.",
-                )
+        user_roles = {rol.upper() for rol in user.roles}
+
+        if permitidos_set and not user_roles.intersection(permitidos_set):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes permisos para esta operación.",
+            )
         return user
 
     return wrapper
+
+
+def require_admin(user: CurrentUser = Depends(require_roles("ADMIN"))) -> CurrentUser:
+    return user

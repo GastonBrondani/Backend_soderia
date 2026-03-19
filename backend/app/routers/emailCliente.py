@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException,status
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from app.core.database import get_db
@@ -8,7 +9,7 @@ from app.schemas.emailCliente import MailClienteCreate, MailClienteUpdate, MailC
 from typing import List
 
 
-router = APIRouter(prefix="/clientes/{legajo}/emails", tags=["Emails Cliente"])
+router = APIRouter(prefix="/clientes/{legajo}/emails", tags=["Emails Cliente"],dependencies=[Depends(get_current_user)],)
 
 
 @router.get("/", response_model=List[MailClienteOut])

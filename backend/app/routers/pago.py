@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import require_roles, CurrentUser
+from app.core.security import require_roles, CurrentUser, get_current_user
 from app.schemas.pedido import PedidoCancelarDeudaIn
 from app.schemas.clienteCuenta import ClienteCuentaOut
 from app.services.pedidoService import PedidoService
@@ -19,7 +19,7 @@ from app.services.pagoService import PagoService
 from app.services.comprobantePagoService import ComprobantePagoService as ComprobantePagoServiceExtended
 
 
-router = APIRouter(prefix="/pagos", tags=["Pagos"])
+router = APIRouter(prefix="/pagos", tags=["Pagos"],dependencies=[Depends(get_current_user)],)
 
 
 @router.post("/cancelar-deuda", response_model=ClienteCuentaOut)

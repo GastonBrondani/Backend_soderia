@@ -1,5 +1,6 @@
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -13,7 +14,7 @@ from app.schemas.camionReparto import (
     CamionRepartoOut,
 )
 
-router = APIRouter(prefix="/camiones-reparto", tags=["CamiónReparto"])
+router = APIRouter(prefix="/camiones-reparto", tags=["CamiónReparto"],dependencies=[Depends(get_current_user)],)
 
 
 

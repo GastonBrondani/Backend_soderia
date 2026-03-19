@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.schemas.recorrido import RecorridoCreate, RecorridoOut
 from app.services.recorridoService import RecorridoService
 from app.models import Recorrido
 
-router = APIRouter(prefix="/recorridos", tags=["Recorrido"])
+router = APIRouter(prefix="/recorridos", tags=["Recorrido"],dependencies=[Depends(get_current_user)],)
 
 @router.post("/", response_model=RecorridoOut, status_code=201)
 def abrir_recorrido(payload: RecorridoCreate, db: Session = Depends(get_db)):

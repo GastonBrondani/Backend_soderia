@@ -1,16 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
-from sqlalchemy import select, update, and_, func
-from pydantic import BaseModel
-from typing import Optional
+
 
 from app.core.database import get_db
-from app.models.clienteDiaSemana import ClienteDiaSemana
+
 from app.schemas.agenda import AgendaMoverIn
 from app.services.agendaService import insertar_cliente_en_agenda
 
 
-router = APIRouter(prefix="/agenda", tags=["Agenda"])
+router = APIRouter(prefix="/agenda", tags=["Agenda"],dependencies=[Depends(get_current_user)],)
 
 @router.post("/mover")
 def mover_cliente_agenda(payload: AgendaMoverIn, db: Session = Depends(get_db)):

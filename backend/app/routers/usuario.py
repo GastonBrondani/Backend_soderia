@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from sqlalchemy import select
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from app.core.security import get_current_user
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -12,7 +12,7 @@ from app.core.security import hash_password
 from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioOut
 
-router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
+router = APIRouter(prefix="/usuarios", tags=["Usuarios"],dependencies=[Depends(get_current_user)],)
 
 
 @router.post("/", response_model=UsuarioOut, status_code=status.HTTP_201_CREATED)
