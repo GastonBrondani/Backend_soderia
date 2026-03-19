@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, status
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from datetime import date
 
@@ -6,7 +7,7 @@ from app.core.database import get_db
 from app.schemas.pedido import PedidoCreate, PedidoOut, PedidoConfirmarIn
 from app.services.pedidoService import PedidoService
 
-router = APIRouter(prefix="/pedidos", tags=["Pedidos"])
+router = APIRouter(prefix="/pedidos", tags=["Pedidos"],dependencies=[Depends(get_current_user)],)
 
 @router.post("/", response_model=PedidoOut, status_code=status.HTTP_201_CREATED)
 def crear_pedido(data: PedidoCreate, db: Session = Depends(get_db)):

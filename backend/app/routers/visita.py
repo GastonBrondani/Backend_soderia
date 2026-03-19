@@ -2,6 +2,7 @@ from datetime import datetime,date
 from typing import Optional
 
 from fastapi import Depends,status,APIRouter,HTTPException,Query
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 from app.core.database import get_db
@@ -16,7 +17,7 @@ from app.services.historicoService import registrar_evento_cliente
 from app.schemas.enumsHistorico import TipoEventoCodigoEnum
 
 
-router = APIRouter(prefix="/visitas",tags=["Visitas"])
+router = APIRouter(prefix="/visitas",tags=["Visitas"],dependencies=[Depends(get_current_user)],)
 
 @router.post("/{legajo}",response_model=VisitaOut,status_code=status.HTTP_201_CREATED,)
 def crear_visita_cliente(payload: VisitaCreate,cliente: Cliente = Depends(get_cliente_or_404_dep), db: Session = Depends(get_db),):

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Query, status
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -8,7 +9,7 @@ from app.schemas.movimientoStock import MovimientoCreate, MovimientoOut
 from app.services.stockService import StockService
 from app.schemas.enumsStock import TipoMovimiento
 
-router = APIRouter(prefix="/movimientos-stock", tags=["Movimiento de Stock"])
+router = APIRouter(prefix="/movimientos-stock", tags=["Movimiento de Stock"],dependencies=[Depends(get_current_user)],)
 
 @router.post("/", response_model=list[MovimientoOut], status_code=status.HTTP_201_CREATED)
 def crear(payload: MovimientoCreate, db: Session = Depends(get_db)):

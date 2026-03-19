@@ -1,5 +1,6 @@
 # app/routers/medios_pago.py
 from fastapi import APIRouter, Depends, status, HTTPException
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 
@@ -7,7 +8,7 @@ from app.core.database import get_db
 from app.models.medioPago import MedioPago   # ajustá la ruta si difiere
 from app.schemas.medioPago import MedioPagoCreate, MedioPagoOut
 
-router = APIRouter(prefix="/medios-pago", tags=["Medios de pago"])
+router = APIRouter(prefix="/medios-pago", tags=["Medios de pago"],dependencies=[Depends(get_current_user)],)
 
 @router.post("/", response_model=MedioPagoOut, status_code=status.HTTP_201_CREATED)
 def crear_medio_pago(data: MedioPagoCreate, db: Session = Depends(get_db)):

@@ -20,7 +20,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade():
     op.execute("""
-        INSERT INTO dia (id_dia, nombre_dia) VALUES
+        INSERT INTO dia_semana (id_dia, nombre_dia) VALUES
             (1, 'Lunes'),
             (2, 'Martes'),
             (3, 'Miercoles'),
@@ -52,7 +52,7 @@ def upgrade():
     """)
 
     op.execute("""
-        INSERT INTO evento (id_evento, nombre) VALUES
+        INSERT INTO tipo_evento (id_evento, nombre) VALUES
             (1, 'CLIENTE_ACTUALIZADO'),
             (2, 'VISITA_REGISTRADA')
         ON CONFLICT DO NOTHING;
@@ -62,7 +62,7 @@ def upgrade():
     op.execute("""
         SELECT setval(
             pg_get_serial_sequence('dia', 'id_dia'),
-            COALESCE((SELECT MAX(id_dia) FROM dia), 1),
+            COALESCE((SELECT MAX(id_dia) FROM dia_semana), 1),
             true
         );
     """)
@@ -94,7 +94,7 @@ def upgrade():
     op.execute("""
         SELECT setval(
             pg_get_serial_sequence('evento', 'id_evento'),
-            COALESCE((SELECT MAX(id_evento) FROM evento), 1),
+            COALESCE((SELECT MAX(id_evento) FROM tipo_evento), 1),
             true
         );
     """)

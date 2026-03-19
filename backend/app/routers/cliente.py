@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status,Query
+from app.core.security import get_current_user
 from typing import List, Dict, Optional
 from sqlalchemy import update, func
 from sqlalchemy.orm import Session, selectinload
@@ -15,13 +16,9 @@ from sqlalchemy import select
 from app.schemas.cliente import (
     ClienteCreate,
     ClienteOut,
-    ClienteUpdate,
-    DiaSemanaEnum,
-    TurnoVisitaEnum,
+    ClienteUpdate,    
 )
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-
-from fastapi import APIRouter, Depends, HTTPException, Query,status
 
 from app.services.clienteService import ClienteService
 from app.schemas.clienteDetalle import ClienteDetalleOut, ClienteDetalleUpdate
@@ -39,7 +36,6 @@ from app.schemas.clienteCuenta import ClienteCuentaCreate
 
 #------------------------------------EMMA------------------------------------------------
 from app.models.historico import Historico
-from app.models.cliente import Cliente
 from app.schemas.historico import HistoricoOut
 from app.models.pedido import Pedido
 from app.schemas.pedido import PedidoOutCorto
@@ -49,7 +45,7 @@ from app.schemas.pedido import PedidoOutCorto
 # --------------------- pasarlo a logica de servicio ---------------------
 
 
-router = APIRouter(prefix="/clientes", tags=["Clientes"])
+router = APIRouter(prefix="/clientes", tags=["Clientes"],dependencies=[Depends(get_current_user)],)
 
 def _idx_dias(db: Session) -> Dict[str, int]:
     """Devuelve {'lun': id_dia, ...} en base a tabla dia_semana."""

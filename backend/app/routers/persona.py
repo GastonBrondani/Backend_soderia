@@ -1,4 +1,5 @@
 from fastapi import APIRouter,Depends,HTTPException,status
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from typing import List
 from sqlalchemy import select, delete
@@ -8,7 +9,7 @@ from app.models.persona import Persona
 from app.schemas.persona import PersonaCreate,PersonaOut,PersonaUpdate
 
 
-router = APIRouter(prefix="/personas", tags=["Personas"])
+router = APIRouter(prefix="/personas", tags=["Personas"],dependencies=[Depends(get_current_user)],)
 
 @router.get("/",response_model=List[PersonaOut])
 def ListarPersonas(db:Session=Depends(get_db)):
