@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import List
 
 from fastapi import APIRouter, Body, Depends,  Response, status
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -10,7 +11,7 @@ from app.services import comboService
 from app.schemas.comboProducto import ComboProductoIn
 
 
-router = APIRouter(prefix="/combos", tags=["Combo"])
+router = APIRouter(prefix="/combos", tags=["Combo"],dependencies=[Depends(get_current_user)],)
 
 
 @router.post("/", response_model=ComboOut, status_code=status.HTTP_201_CREATED)

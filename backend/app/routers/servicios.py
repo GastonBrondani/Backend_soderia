@@ -1,5 +1,6 @@
 from decimal import Decimal
 from fastapi import APIRouter, Depends
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -8,10 +9,11 @@ from app.services.clienteServicioService import (
     listar_pendientes_cliente,
     pagar_periodo_servicio,
     actualizar_monto_servicio,
+    listar_servicios_cliente,
 )
-from app.schemas.servicios import ServicioMontoUpdate
+from app.schemas.servicios import ServicioMontoUpdate, ClienteServicioOut
 
-router = APIRouter(prefix="/servicios", tags=["Servicios"])
+router = APIRouter(prefix="/servicios", tags=["Servicios"],dependencies=[Depends(get_current_user)],)
 
 
 @router.post("/clientes/{legajo}/alquiler-dispenser")
@@ -38,6 +40,12 @@ def alta_alquiler_dispenser(
 def pendientes(legajo: int, db: Session = Depends(get_db)):
     return listar_pendientes_cliente(db, legajo)
 
+@router.get("/clientes/{legajo}", response_model=list[ClienteServicioOut])
+def get_servicios_cliente(
+    legajo: int,
+    db: Session = Depends(get_db),
+):
+    return listar_servicios_cliente(db, legajo)
 
 @router.post("/periodos/{id_periodo}/pagar")
 def pagar(

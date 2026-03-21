@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from datetime import date, timedelta
+from fastapi import APIRouter, Depends, HTTPException, Query
+from app.core.security import get_current_user
+from datetime import date
 from sqlalchemy.orm import Session
 from sqlalchemy import select, delete
 from typing import List, Optional
@@ -13,10 +14,8 @@ from app.models.diaSemana import DiaSemana
 from app.models.cliente import Cliente
 from app.models.persona import Persona
 from app.models.visita import Visita
-from sqlalchemy import and_, func
-from sqlalchemy import select, delete, func
+from sqlalchemy import  func
 from sqlalchemy.sql import over
-from app.models.visita import Visita
 
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -24,7 +23,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 
 
-router = APIRouter(prefix="/clientes", tags=["Cliente - días de visita"])
+router = APIRouter(prefix="/clientes", tags=["Cliente - días de visita"],dependencies=[Depends(get_current_user)],)
 
 # ---- Schemas específicos del router (payload/response del endpoint) ----
 class ClienteDiaVisitaIn(BaseModel):

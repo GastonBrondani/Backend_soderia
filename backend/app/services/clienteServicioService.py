@@ -128,9 +128,7 @@ def _upsert_periodo(
         id_cliente_servicio=srv.id_cliente_servicio,
         periodo=periodo,
         monto=srv.monto_mensual,
-        monto_pendiente=(
-            Decimal("0") if estado == "PAGADO" else Decimal(srv.monto_mensual)
-        ),
+        monto_pendiente=Decimal("0") if estado == "PAGADO" else Decimal(srv.monto_mensual),
         estado=estado,
         fecha_vencimiento=vencimiento_mes(periodo),
         fecha_pago=fecha_pago,
@@ -335,3 +333,14 @@ def actualizar_monto_servicio(
                 p.monto_pendiente = nuevo_monto
 
     return srv
+
+def listar_servicios_cliente(db: Session, legajo: int):
+    return (
+        db.execute(
+            select(ClienteServicio)
+            .where(ClienteServicio.legajo == legajo)
+            .order_by(ClienteServicio.id_cliente_servicio.desc())
+        )
+        .scalars()
+        .all()
+    )

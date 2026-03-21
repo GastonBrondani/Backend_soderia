@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Query, status, Depends, HTTPException
+from app.core.security import get_current_user
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
@@ -12,7 +13,7 @@ from app.models.historico import Historico
 from app.schemas.historico import HistoricoOut
 
 
-router = APIRouter(prefix="/historico", tags=["Historico"])
+router = APIRouter(prefix="/historico", tags=["Historico"],dependencies=[Depends(get_current_user)],)
 
 @router.get("/{legajo}",response_model=HistoricoOut, status_code=status.HTTP_200_OK)
 def obtener_historico_cliente(legajo: int,db=Depends(get_db)):

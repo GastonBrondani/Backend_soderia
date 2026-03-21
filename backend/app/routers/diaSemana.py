@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from typing import List
@@ -7,7 +8,7 @@ from app.core.database import get_db
 from app.models.diaSemana import DiaSemana
 from app.schemas.diaSemana import DiaSemanaCreate, DiaSemanaOut
 
-router = APIRouter(prefix="/dias-semana", tags=["Días de semana"])
+router = APIRouter(prefix="/dias-semana", tags=["Días de semana"],dependencies=[Depends(get_current_user)],)
 
 @router.post("/", response_model=list[DiaSemanaOut])
 def crear_dias(

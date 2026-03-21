@@ -1,5 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends, Query
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -47,7 +48,7 @@ from app.services.listaPrecioServicioService import (
     upsert_precio_servicio as svc_upsert_precio_servicio,
 )
 
-router = APIRouter(prefix="/listas-precios", tags=["ListaDePrecios"])
+router = APIRouter(prefix="/listas-precios", tags=["ListaDePrecios"],dependencies=[Depends(get_current_user)],)
 
 
 """ @router.get("/{id_lista}/precios", response_model=List[LPPBasicOut])

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -11,7 +12,7 @@ from app.schemas.enumsStock import TipoMovimiento
 
 
 
-router = APIRouter(prefix="/productos", tags=["Producto"])
+router = APIRouter(prefix="/productos", tags=["Producto"],dependencies=[Depends(get_current_user)],)
 
 def _get_producto_or_404(db: Session, id_producto: int) -> Producto:
     obj = db.get(Producto, id_producto)

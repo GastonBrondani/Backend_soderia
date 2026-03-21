@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -7,7 +8,7 @@ from app.api.deps import get_cliente_or_404_dep
 from app.models.clienteCuenta import ClienteCuenta
 from app.schemas.clienteCuenta import ClienteCuentaCreate, ClienteCuentaOut, ClienteCuentaUpdate
 
-router = APIRouter(prefix="/clientes/{legajo}", tags=["ClienteCuenta"])
+router = APIRouter(prefix="/clientes/{legajo}", tags=["ClienteCuenta"],dependencies=[Depends(get_current_user)],)
 
 def _get_cuenta_or_404(db: Session, legajo: int, id_cuenta: int) -> ClienteCuenta:
     cuenta = db.execute(

@@ -1,16 +1,16 @@
 from datetime import date
 from fastapi import APIRouter, Depends, Query
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.services.cajaEmpresaService import CajaEmpresaService
 from app.schemas.cajaEmpresa import CajaEmpresaTotalOut
-from app.schemas.cajaEmpresa import (
-    CajaEmpresaTotalOut,
+from app.schemas.cajaEmpresa import (   
     CajaEmpresaMovimientosListOut,
 )
 
-router = APIRouter(prefix="/caja-empresa", tags=["Caja Empresa"])
+router = APIRouter(prefix="/caja-empresa", tags=["Caja Empresa"],dependencies=[Depends(get_current_user)],)
 
 #Usado para probar el cierre diario de caja por repartos, despues se hace automatico
 @router.post("/cierre-diario", summary="Generar cierre de caja por repartos del día")

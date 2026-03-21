@@ -151,6 +151,11 @@ erDiagram
         id_producto Integer PK FK
         precio Numeric
     }
+    lista_precio_servicio {
+        int id_lista FK
+        int id_cliente_servicio FK
+        string precio
+    }
     medio_pago {
         id_medio_pago Integer PK
         nombre String
@@ -166,31 +171,31 @@ erDiagram
         observacion String
     }
     pago {
-        id_pago Integer PK
-        id_empresa Integer FK
-        legajo Integer FK
-        id_cuenta Integer FK
-        id_pedido Integer FK
-        id_repartodia Integer FK
-        id_medio_pago Integer FK
-        fecha DateTime
-        monto Numeric
-        tipo_pago String
-        observacion Text
-        id_cliente_servicio_periodo Integer FK
+        int id_pago PK
+        int id_empresa FK
+        int legajo FK
+        int id_cuenta FK
+        int id_pedido FK
+        int id_repartodia FK
+        int id_medio_pago FK
+        string fecha
+        string monto
+        string tipo_pago
+        string observacion
+        int id_cliente_servicio_periodo FK
     }
     pedido {
-        id_pedido Integer PK
-        legajo Integer FK
-        id_medio_pago Integer FK
-        id_empresa Integer FK
-        id_repartodia Integer FK
-        id_cuenta Integer FK
-        fecha DateTime
-        monto_total Numeric
-        monto_abonado Numeric
-        estado String
-        observacion Text
+        int id_pedido PK
+        int legajo FK
+        int id_medio_pago FK
+        int id_empresa FK
+        int id_repartodia FK
+        int id_cuenta FK
+        string fecha
+        string monto_total
+        string monto_abonado
+        string estado
+        string observacion
     }
     pedido_producto {
         id_pedido_producto Integer PK
@@ -301,7 +306,7 @@ erDiagram
     cliente ||--o{ visita : "legajo"
     cliente_cuenta ||--o{ pago : "id_cuenta"
     cliente_cuenta ||--o{ pedido : "id_cuenta"
-    cliente_servicio ||--o{ cliente_servicio_periodo : "id_cliente_servicio"
+    cliente_servicio ||--o{ lista_precio_servicio : "id_cliente_servicio"
     cliente_servicio_periodo ||--o{ pago : "id_cliente_servicio_periodo"
     combo ||--o{ combo_producto : "id_combo"
     combo ||--o{ lista_precio_combo : "id_combo"
@@ -321,6 +326,7 @@ erDiagram
     empresa ||--o{ stock : "id_empresa"
     lista_de_precios ||--o{ lista_precio_combo : "id_lista"
     lista_de_precios ||--o{ lista_precio_producto : "id_lista"
+    lista_de_precios ||--o{ lista_precio_servicio : "id_lista"
     medio_pago ||--o{ caja_empresa : "id_medio_pago"
     medio_pago ||--o{ pago : "id_medio_pago"
     medio_pago ||--o{ pedido : "id_medio_pago"

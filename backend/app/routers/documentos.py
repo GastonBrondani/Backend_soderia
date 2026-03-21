@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from fastapi import HTTPException, status
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -7,7 +8,7 @@ from app.core.database import get_db
 from app.models.documentos import Documentos
 from app.services.comprobantePedidoService import ComprobantePedidoService
 
-router = APIRouter(prefix="/documentos", tags=["Documentos"])
+router = APIRouter(prefix="/documentos", tags=["Documentos"],dependencies=[Depends(get_current_user)],)
 
 
 @router.get("/cliente/{legajo}")

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException,status
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from app.core.database import get_db
@@ -7,7 +8,7 @@ from app.api.deps import get_cliente_or_404_dep
 from app.schemas.telefonoCliente import TelefonoClienteCreate, TelefonoClienteUpdate, TelefonoClienteOut
 from typing import List
 
-router = APIRouter(prefix="/clientes/{legajo}/telefonos", tags=["Teléfonos Cliente"])
+router = APIRouter(prefix="/clientes/{legajo}/telefonos", tags=["Teléfonos Cliente"],dependencies=[Depends(get_current_user)],)
 
 
 

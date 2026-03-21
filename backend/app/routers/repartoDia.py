@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, status, Query
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date
@@ -9,7 +10,7 @@ from app.schemas.repartoDia import (
 )
 from app.services.repartoDiaService import RepartoDiaService
 
-router = APIRouter(prefix="/repartos-dia", tags=["Reparto Día"])
+router = APIRouter(prefix="/repartos-dia", tags=["Reparto Día"],dependencies=[Depends(get_current_user)],)
 
 @router.post("/", response_model=RepartoDiaOut, status_code=status.HTTP_201_CREATED)
 

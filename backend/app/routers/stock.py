@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from sqlalchemy import func, select, delete
 
@@ -11,7 +12,7 @@ from app.schemas.stock import StockDetalleOut
 from app.schemas.stockDetalle import StockDetalleOut
 
 
-router = APIRouter(prefix="/stock", tags=["Stock"])
+router = APIRouter(prefix="/stock", tags=["Stock"],dependencies=[Depends(get_current_user)],)
 
 @router.get("/", response_model=list[StockOut])
 def listar(

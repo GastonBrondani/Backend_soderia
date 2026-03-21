@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, status
+from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.empresa import Empresa
 from app.schemas.empresa import EmpresaCreate, EmpresaRead
 
-router = APIRouter(prefix="/empresas", tags=["Empresa"])
+router = APIRouter(prefix="/empresas", tags=["Empresa"],dependencies=[Depends(get_current_user)],)
 
 @router.post("/", response_model=EmpresaRead, status_code=status.HTTP_201_CREATED)
 def CrearEmpresa(data: EmpresaCreate, db: Session = Depends(get_db)):
