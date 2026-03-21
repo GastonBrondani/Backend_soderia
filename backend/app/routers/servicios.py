@@ -16,7 +16,9 @@ router = APIRouter(prefix="/servicios", tags=["Servicios"])
 
 @router.post("/clientes/{legajo}/alquiler-dispenser")
 def alta_alquiler_dispenser(
-    legajo: int, monto_mensual: Decimal, db: Session = Depends(get_db)
+    legajo: int,
+    monto_mensual: Decimal,
+    db: Session = Depends(get_db),
 ):
     with db.begin():
         srv, per = crear_servicio_alquiler_dispenser(db, legajo, monto_mensual)
@@ -27,6 +29,8 @@ def alta_alquiler_dispenser(
         "id_periodo": per.id_periodo,
         "estado_periodo": per.estado,
         "periodo": per.periodo.isoformat(),
+        "monto_mensual": str(srv.monto_mensual),
+        "monto_pendiente": str(per.monto_pendiente),
     }
 
 
@@ -39,15 +43,27 @@ def pendientes(legajo: int, db: Session = Depends(get_db)):
 def pagar(
     id_periodo: int,
     legajo: int,
-    id_medio_pago: int,
+    id_medio_pago: int | None = None,
+    id_cuenta: int | None = None,
+    usar_saldo: bool = False,
     observacion: str | None = None,
     db: Session = Depends(get_db),
 ):
     with db.begin():
-        pago = pagar_periodo_servicio(
-            db, id_periodo, legajo, id_medio_pago, observacion
+        pago, monto = pagar_periodo_servicio(
+            db,
+            id_periodo,
+            legajo,
+            id_medio_pago,
+            observacion,
+            id_cuenta=id_cuenta,
+            usar_saldo=usar_saldo,
         )
-    return {"ok": True, "id_pago": pago.id_pago, "monto": str(pago.monto)}
+    return (
+        {"ok": True, "id_pago": pago.id_pago, "monto": str(pago.monto)}
+        if pago
+        else {"ok": True, "id_pago": None, "monto": str(monto)}
+    )
 
 
 @router.patch("/{id_cliente_servicio}/monto")
