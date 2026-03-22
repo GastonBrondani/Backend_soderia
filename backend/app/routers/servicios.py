@@ -13,7 +13,11 @@ from app.services.clienteServicioService import (
 )
 from app.schemas.servicios import ServicioMontoUpdate, ClienteServicioOut
 
-router = APIRouter(prefix="/servicios", tags=["Servicios"],dependencies=[Depends(get_current_user)],)
+router = APIRouter(
+    prefix="/servicios",
+    tags=["Servicios"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 @router.post("/clientes/{legajo}/alquiler-dispenser")
@@ -22,23 +26,28 @@ def alta_alquiler_dispenser(
     monto_mensual: Decimal,
     db: Session = Depends(get_db),
 ):
-    with db.begin():
+    try:
         srv, per = crear_servicio_alquiler_dispenser(db, legajo, monto_mensual)
+        db.commit()
 
-    return {
-        "ok": True,
-        "id_cliente_servicio": srv.id_cliente_servicio,
-        "id_periodo": per.id_periodo,
-        "estado_periodo": per.estado,
-        "periodo": per.periodo.isoformat(),
-        "monto_mensual": str(srv.monto_mensual),
-        "monto_pendiente": str(per.monto_pendiente),
-    }
+        return {
+            "ok": True,
+            "id_cliente_servicio": srv.id_cliente_servicio,
+            "id_periodo": per.id_periodo,
+            "estado_periodo": per.estado,
+            "periodo": per.periodo.isoformat(),
+            "monto_mensual": str(srv.monto_mensual),
+            "monto_pendiente": str(per.monto_pendiente),
+        }
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.get("/clientes/{legajo}/pendientes")
 def pendientes(legajo: int, db: Session = Depends(get_db)):
     return listar_pendientes_cliente(db, legajo)
+
 
 @router.get("/clientes/{legajo}", response_model=list[ClienteServicioOut])
 def get_servicios_cliente(
@@ -46,6 +55,7 @@ def get_servicios_cliente(
     db: Session = Depends(get_db),
 ):
     return listar_servicios_cliente(db, legajo)
+
 
 @router.post("/periodos/{id_periodo}/pagar")
 def pagar(
@@ -57,7 +67,7 @@ def pagar(
     observacion: str | None = None,
     db: Session = Depends(get_db),
 ):
-    with db.begin():
+    try:
         pago, monto = pagar_periodo_servicio(
             db,
             id_periodo,
@@ -67,11 +77,16 @@ def pagar(
             id_cuenta=id_cuenta,
             usar_saldo=usar_saldo,
         )
-    return (
-        {"ok": True, "id_pago": pago.id_pago, "monto": str(pago.monto)}
-        if pago
-        else {"ok": True, "id_pago": None, "monto": str(monto)}
-    )
+        db.commit()
+
+        return (
+            {"ok": True, "id_pago": pago.id_pago, "monto": str(pago.monto)}
+            if pago
+            else {"ok": True, "id_pago": None, "monto": str(monto)}
+        )
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.patch("/{id_cliente_servicio}/monto")
@@ -80,7 +95,7 @@ def patch_monto_servicio(
     payload: ServicioMontoUpdate,
     db: Session = Depends(get_db),
 ):
-    with db.begin():
+    try:
         srv = actualizar_monto_servicio(
             db,
             id_cliente_servicio=id_cliente_servicio,
@@ -88,9 +103,13 @@ def patch_monto_servicio(
             aplicar_desde=payload.aplicar_desde,
             actualizar_periodos_no_pagados=payload.actualizar_periodos_no_pagados,
         )
+        db.commit()
 
-    return {
-        "ok": True,
-        "id_cliente_servicio": srv.id_cliente_servicio,
-        "monto_mensual": str(srv.monto_mensual),
-    }
+        return {
+            "ok": True,
+            "id_cliente_servicio": srv.id_cliente_servicio,
+            "monto_mensual": str(srv.monto_mensual),
+        }
+    except Exception:
+        db.rollback()
+        raise
