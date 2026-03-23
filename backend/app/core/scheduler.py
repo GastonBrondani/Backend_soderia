@@ -14,6 +14,8 @@ from app.core.database import SessionLocal
 from app.models.repartoDia import RepartoDia
 from app.models.empresa import Empresa
 from app.models.usuario import Usuario
+from app.models.rol import Rol
+from app.models.usuarioRol import UsuarioRol
 
 # from app.services.cajaEmpresaService import CajaEmpresaService
 
@@ -30,17 +32,36 @@ def ensure_usuario_sis(db: Session) -> Usuario:
         .all()
     )
 
-    if len(usuarios) == 1:
-        return usuarios[0]
-
     if len(usuarios) == 0:
         raise RuntimeError(
-            "No existe el usuario de sistema 'sis'. Debe crearse manualmente."
+            "No existe el usuario de sistema 'sis'. Debe existir exactamente uno."
         )
 
-    raise RuntimeError(
-        f"Se encontraron {len(usuarios)} usuarios 'sis'. Debe existir solo uno."
-    )
+    if len(usuarios) > 1:
+        raise RuntimeError(
+            f"Se encontraron {len(usuarios)} usuarios 'sis'. Debe existir solo uno."
+        )
+
+    usuario = usuarios[0]
+
+    tiene_superadmin = db.execute(
+        select(Rol.id_rol)
+        .join(UsuarioRol, UsuarioRol.id_rol == Rol.id_rol)
+        .where(
+            UsuarioRol.id_usuario == usuario.id_usuario,
+            Rol.nombre == "SUPERADMINISTRADOR",
+        )
+    ).first()
+
+    if not tiene_superadmin:
+        raise RuntimeError(
+            "El usuario 'sis' no tiene el rol SUPERADMINISTRADOR."
+        )
+
+    return usuario
+    
+
+
 
 
 def crear_repartos_del_dia_automaticos(
