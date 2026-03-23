@@ -8,8 +8,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-import os
-from app.core.security import hash_password
+
 
 from app.core.database import SessionLocal
 from app.models.repartoDia import RepartoDia
@@ -23,40 +22,25 @@ scheduler: AsyncIOScheduler | None = None
 
 
 def ensure_usuario_sis(db: Session) -> Usuario:
-    stmt = select(Usuario).where(Usuario.nombre_usuario == "sis")
-    usuario = db.execute(stmt).scalars().first()  # tolera duplicados sin explotar
-
-    if usuario:
-        return usuario
-
-    if os.getenv("AUTO_CREATE_SIS", "0") != "1":
-        raise RuntimeError(
-            "No existe el usuario de sistema 'sis' y AUTO_CREATE_SIS != 1"
+    usuarios = (
+        db.execute(
+            select(Usuario).where(Usuario.nombre_usuario == "sis")
         )
-
-    password = os.getenv("SIS_PASSWORD", "sis")
-    hashed = hash_password(password)
-
-    usuario = Usuario(
-        nombre_usuario="sis",
-        legajo_empleado=None,
-        legajo_cliente=None,
+        .scalars()
+        .all()
     )
 
-    # Setea contraseña sin asumir el nombre exacto del atributo en el modelo
-    if hasattr(usuario, "contraseña"):
-        setattr(usuario, "contraseña", hashed)
-    elif hasattr(usuario, "contrasena"):
-        setattr(usuario, "contrasena", hashed)
-    else:
+    if len(usuarios) == 1:
+        return usuarios[0]
+
+    if len(usuarios) == 0:
         raise RuntimeError(
-            "No encuentro el atributo de contraseña en el modelo Usuario (contraseña/contrasena)"
+            "No existe el usuario de sistema 'sis'. Debe crearse manualmente."
         )
 
-    db.add(usuario)
-    db.commit()
-    db.refresh(usuario)
-    return usuario
+    raise RuntimeError(
+        f"Se encontraron {len(usuarios)} usuarios 'sis'. Debe existir solo uno."
+    )
 
 
 def crear_repartos_del_dia_automaticos(
