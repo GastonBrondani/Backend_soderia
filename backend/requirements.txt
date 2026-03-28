@@ -11,3 +11,4 @@ alembic==1.16.4
 apscheduler==3.11.1
 reportlab==4.1.0
 python-multipart==0.0.22
+openpyxl
