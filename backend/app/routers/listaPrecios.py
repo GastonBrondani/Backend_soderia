@@ -92,9 +92,9 @@ def listar_productos_con_precio(
 def obtener_lista(id_lista: int, db: Session = Depends(get_db)):
     return svc_obtener_lista(db, id_lista)
 
-# @router.get("/", response_model=list[ListaDePreciosOut])  # Usado por emma.
-# def listar_listas(db: Session = Depends(get_db), limit: int = 50, offset: int = 0):
-#     return svc_listar_listas(db, limit, offset)
+@router.get("/", response_model=list[ListaDePreciosOut])  # Usado por emma.
+def listar_listas(db: Session = Depends(get_db), limit: int = 50, offset: int = 0):
+    return svc_listar_listas(db, limit, offset)
 
 
 # # Devuelve todos los productos que tienen precio cargado en la lista indicada, junto con ese precio.
