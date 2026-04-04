@@ -29,5 +29,5 @@ jobs:
 
             docker compose restart backend
 
-            docker compose exec -T backend alembic upgrade head
+            docker compose exec -T backend alembic upgrade heads
           EOF
