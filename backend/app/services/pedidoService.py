@@ -88,7 +88,7 @@ class PedidoService:
     def confirmar_pedido(
         db: Session, id_pedido: int, data: PedidoConfirmarIn
     ) -> PedidoOut:
-        with db.begin():
+        try:
             now = datetime.now()
 
             # 1) Traer pedido y bloquear
@@ -101,6 +101,19 @@ class PedidoService:
             if ped.id_medio_pago is None:
                 raise HTTPException(
                     status_code=400, detail="El pedido no tiene medio de pago"
+                )
+
+            # Regla 1: el pedido ya nace con reparto
+            if ped.id_repartodia is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="El pedido no tiene id_repartodia asignado.",
+                )
+
+            if ped.id_repartodia != data.id_repartodia:
+                raise HTTPException(
+                    status_code=409,
+                    detail="El reparto enviado no coincide con el reparto del pedido.",
                 )
 
             total = _q2(ped.monto_total or Decimal("0"))
@@ -116,7 +129,7 @@ class PedidoService:
                     status_code=400, detail="monto_abonado no puede ser negativo."
                 )
 
-            # 2) Bloquear cuenta (antes que reparto, para no deadlockear con PagoService)
+            # 2) Bloquear cuenta
             id_cuenta = getattr(ped, "id_cuenta", None)
 
             if id_cuenta is None:
@@ -139,7 +152,7 @@ class PedidoService:
                         detail="Pedido sin id_cuenta y cliente con múltiples cuentas. No se puede confirmar.",
                     )
                 id_cuenta = ids[0]
-                ped.id_cuenta = id_cuenta  # opcional: “autofix” para que quede guardado
+                ped.id_cuenta = id_cuenta
 
             cuenta = db.execute(
                 select(ClienteCuenta)
@@ -159,7 +172,7 @@ class PedidoService:
             # 3) Traer reparto_dia y bloquear
             rep = db.execute(
                 select(RepartoDia)
-                .where(RepartoDia.id_repartodia == data.id_repartodia)
+                .where(RepartoDia.id_repartodia == ped.id_repartodia)
                 .with_for_update()
             ).scalar_one_or_none()
             if rep is None:
@@ -177,7 +190,7 @@ class PedidoService:
                     detail="El pedido y el reparto pertenecen a empresas distintas",
                 )
 
-            # 4) STOCK + MovimientoStock (solo al confirmar)
+            # 4) STOCK + MovimientoStock
             items = (
                 db.execute(
                     select(PedidoProducto)
@@ -188,11 +201,8 @@ class PedidoService:
                 .all()
             )
 
-            # evitar duplicar movimientos si reintentan
             ya_mov = db.execute(
-                select(MovimientoStock).where(
-                    MovimientoStock.id_pedido == ped.id_pedido
-                )
+                select(MovimientoStock).where(MovimientoStock.id_pedido == ped.id_pedido)
             ).first()
             if ya_mov:
                 raise HTTPException(
@@ -203,9 +213,6 @@ class PedidoService:
             fecha_mov = getattr(ped, "fecha", None) or now
 
             for it in items:
-                # =====================================================
-                # PRODUCTO SIMPLE
-                # =====================================================
                 if it.id_producto is not None:
                     prod = db.get(Producto, it.id_producto)
                     if prod is None:
@@ -253,9 +260,6 @@ class PedidoService:
                         )
                     )
 
-                # =====================================================
-                # COMBO
-                # =====================================================
                 elif it.id_combo is not None:
                     combo_items = (
                         db.execute(
@@ -320,10 +324,10 @@ class PedidoService:
                             )
                         )
 
-            # 5) CARGO del pedido a la cuenta (acá recién impacta)
+            # 5) Cargar compra a cuenta
             _aplicar_compra_a_cuenta(cuenta, total)
 
-            # 6) Registrar pago (si corresponde) -> aplica pago a cuenta + caja + reparto
+            # 6) Registrar pago si corresponde
             if abonado > 0:
                 ya_pago = db.execute(
                     select(Pago.id_pago).where(Pago.id_pedido == ped.id_pedido)
@@ -331,7 +335,7 @@ class PedidoService:
                 if ya_pago:
                     raise HTTPException(
                         status_code=409,
-                        detail="Ya existe un pago registrado para este pedido."
+                        detail="Ya existe un pago registrado para este pedido.",
                     )
 
                 PagoService.crear(
@@ -345,13 +349,12 @@ class PedidoService:
                     legajo=ped.legajo,
                     id_cuenta=id_cuenta,
                     id_pedido=ped.id_pedido,
-                    id_repartodia=data.id_repartodia,
+                    id_repartodia=ped.id_repartodia,
                     impactar_cuenta=True,
                     impactar_reparto=True,
                 )
 
-            # 7) EstadoPedido (SIN usar "confirmado")
-            # lógica: con lo disponible (saldo previo + abonado) ¿cubre el total?
+            # 7) Estado
             pago_disponible = saldo_antes + abonado
 
             if pago_disponible <= 0:
@@ -359,7 +362,6 @@ class PedidoService:
             elif pago_disponible < total:
                 ped.estado = EstadoPedido.abonado_parcialmente
             else:
-                # está cubierto; si al final el saldo subió vs saldo_antes => cliente pagó de más
                 saldo_despues = _q2(cuenta.saldo or Decimal("0"))
                 if saldo_despues > saldo_antes:
                     ped.estado = EstadoPedido.cliente_pago_de_mas
@@ -369,7 +371,7 @@ class PedidoService:
             # 8) cliente_reparto_dia
             ClienteRepartoDiaService.upsert_desde_pedido(
                 db=db,
-                id_repartodia=data.id_repartodia,
+                id_repartodia=ped.id_repartodia,
                 legajo=ped.legajo,
                 monto_abonado=ped.monto_abonado,
                 observacion=ped.observacion,
@@ -390,11 +392,21 @@ class PedidoService:
                 )
             )
 
-            # 10) Enlazar reparto y cerrar
-            ped.id_repartodia = data.id_repartodia
+            db.commit()
+            db.refresh(ped)
 
-            db.flush()
             return PedidoOut.model_validate(ped)
+
+        except HTTPException:
+            db.rollback()
+            raise
+        except SQLAlchemyError as e:
+            db.rollback()
+            print("ERROR SQL confirmar_pedido:", repr(e))
+            raise HTTPException(
+                status_code=500,
+                detail=str(e),
+            )
 
     @staticmethod
     def Listar_pedidos_por_Fecha(db: Session, fecha: date) -> list[PedidoOut]:
@@ -433,7 +445,18 @@ class PedidoService:
                     status_code=400, detail="id_medio_pago inexistente."
                 )
 
-            # 2) Resolver cuenta
+            # 2) Validar reparto
+            rep = db.execute(
+                select(RepartoDia).where(
+                    RepartoDia.id_repartodia == pedido_create.id_repartodia
+                )
+            ).scalar_one_or_none()
+            if rep is None:
+                raise HTTPException(
+                    status_code=404, detail="Reparto del día no encontrado."
+                )
+
+            # 3) Resolver cuenta
             id_cuenta = getattr(pedido_create, "id_cuenta", None)
             ids = (
                 db.execute(
@@ -464,7 +487,7 @@ class PedidoService:
                         detail="Cuenta no encontrada para ese cliente.",
                     )
 
-            # 3) Estado inicial
+            # 4) Estado inicial
             estado_inicial = EstadoPedido.pendiente
             if abonado > 0:
                 estado_inicial = (
@@ -473,7 +496,7 @@ class PedidoService:
                     else EstadoPedido.abonado_parcialmente
                 )
 
-            # 4) Crear pedido
+            # 5) Crear pedido
             nuevo = Pedido(
                 **{
                     **pedido_create.model_dump(
@@ -482,7 +505,6 @@ class PedidoService:
                             "monto_total",
                             "monto_abonado",
                             "items",
-                            "id_repartodia",
                         },
                     ),
                     "id_cuenta": id_cuenta,
@@ -496,7 +518,7 @@ class PedidoService:
 
             total_calculado = Decimal("0")
 
-            # 5) Items
+            # 6) Crear items
             for item in items:
                 cantidad = Decimal(item.cantidad)
                 precio_unitario = _q2(item.precio_unitario)
@@ -530,6 +552,7 @@ class PedidoService:
                         )
                     )
 
+            # 7) Validar total
             total_calculado = _q2(total_calculado)
             if total_calculado != total:
                 raise HTTPException(

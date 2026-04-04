@@ -39,10 +39,8 @@ class PedidoBase(BaseModel):
     monto_abonado: Decimal = Decimal("0.00")
     estado: EstadoPedido = EstadoPedido.pendiente
     observacion: Optional[str] = None
-    id_repartodia: Optional[int] = None
-
+    id_repartodia: int
     id_cuenta: Optional[int] = None
-
     items: Optional[List[PedidoItemIn]] = None
 
     @field_validator("estado", "observacion")
