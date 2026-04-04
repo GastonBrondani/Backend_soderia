@@ -542,10 +542,12 @@ class PedidoService:
 
         except HTTPException:
             raise
-        except SQLAlchemyError:
+        except SQLAlchemyError as e:
             db.rollback()
+            print("ERROR SQL crear_pedido:", repr(e))
             raise HTTPException(
-                status_code=500, detail="Error interno al crear el pedido."
+                status_code=500,
+                detail=str(e)
             )
 
     @staticmethod
