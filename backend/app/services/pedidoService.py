@@ -422,132 +422,135 @@ class PedidoService:
         items = pedido_create.items or []
 
         try:
-            with db.begin():
-                # 1) Validar medio de pago
-                mp = db.execute(
-                    select(MedioPago).where(
-                        MedioPago.id_medio_pago == pedido_create.id_medio_pago
-                    )
-                ).scalar_one_or_none()
-                if mp is None:
-                    raise HTTPException(
-                        status_code=400, detail="id_medio_pago inexistente."
-                    )
-
-                # 2) Resolver cuenta
-                id_cuenta = getattr(pedido_create, "id_cuenta", None)
-                ids = (
-                    db.execute(
-                        select(ClienteCuenta.id_cuenta).where(
-                            ClienteCuenta.legajo == pedido_create.legajo
-                        )
-                    )
-                    .scalars()
-                    .all()
+            # 1) Validar medio de pago
+            mp = db.execute(
+                select(MedioPago).where(
+                    MedioPago.id_medio_pago == pedido_create.id_medio_pago
+                )
+            ).scalar_one_or_none()
+            if mp is None:
+                raise HTTPException(
+                    status_code=400, detail="id_medio_pago inexistente."
                 )
 
-                if not ids:
-                    raise HTTPException(
-                        status_code=409, detail="El cliente no tiene cuenta creada."
+            # 2) Resolver cuenta
+            id_cuenta = getattr(pedido_create, "id_cuenta", None)
+            ids = (
+                db.execute(
+                    select(ClienteCuenta.id_cuenta).where(
+                        ClienteCuenta.legajo == pedido_create.legajo
                     )
-
-                if id_cuenta is None:
-                    if len(ids) > 1:
-                        raise HTTPException(
-                            status_code=400,
-                            detail="El cliente tiene más de una cuenta. Enviar id_cuenta.",
-                        )
-                    id_cuenta = ids[0]
-                else:
-                    if id_cuenta not in ids:
-                        raise HTTPException(
-                            status_code=404,
-                            detail="Cuenta no encontrada para ese cliente.",
-                        )
-
-                # 3) Estado inicial
-                estado_inicial = EstadoPedido.pendiente
-                if abonado > 0:
-                    estado_inicial = (
-                        EstadoPedido.abonado
-                        if abonado >= total
-                        else EstadoPedido.abonado_parcialmente
-                    )
-
-                # 4) Crear pedido
-                nuevo = Pedido(
-                    **{
-                        **pedido_create.model_dump(
-                            exclude_unset=True,
-                            exclude={
-                                "monto_total",
-                                "monto_abonado",
-                                "items",
-                            },
-                        ),
-                        "id_cuenta": id_cuenta,
-                        "monto_total": total,
-                        "monto_abonado": abonado,
-                        "estado": estado_inicial,
-                    }
                 )
-                db.add(nuevo)
-                db.flush()  # nuevo.id_pedido
+                .scalars()
+                .all()
+            )
 
-                total_calculado = Decimal("0")
+            if not ids:
+                raise HTTPException(
+                    status_code=409, detail="El cliente no tiene cuenta creada."
+                )
 
-                # 5) Items (SIEMPRE)
-                for item in items:
-                    cantidad = Decimal(item.cantidad)
-                    precio_unitario = _q2(item.precio_unitario)
-                    total_calculado += cantidad * precio_unitario
-
-                    if item.id_producto:
-                        prod = db.get(Producto, item.id_producto)
-                        if not prod:
-                            raise HTTPException(
-                                status_code=400,
-                                detail=f"Producto {item.id_producto} inexistente.",
-                            )
-                        db.add(
-                            PedidoProducto(
-                                id_pedido=nuevo.id_pedido,
-                                id_producto=item.id_producto,
-                                id_combo=None,
-                                cantidad=int(cantidad),
-                                precio_unitario=str(precio_unitario),
-                            )
-                        )
-                    elif item.id_combo:
-                        db.add(
-                            PedidoProducto(
-                                id_pedido=nuevo.id_pedido,
-                                id_producto=None,
-                                id_combo=item.id_combo,
-                                cantidad=int(cantidad),
-                                precio_unitario=str(precio_unitario),
-                            )
-                        )
-
-                total_calculado = _q2(total_calculado)
-                if total_calculado != total:
+            if id_cuenta is None:
+                if len(ids) > 1:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"monto_total ({total}) no coincide con items+servicios ({total_calculado}).",
+                        detail="El cliente tiene más de una cuenta. Enviar id_cuenta.",
+                    )
+                id_cuenta = ids[0]
+            else:
+                if id_cuenta not in ids:
+                    raise HTTPException(
+                        status_code=404,
+                        detail="Cuenta no encontrada para ese cliente.",
                     )
 
-                
+            # 3) Estado inicial
+            estado_inicial = EstadoPedido.pendiente
+            if abonado > 0:
+                estado_inicial = (
+                    EstadoPedido.abonado
+                    if abonado >= total
+                    else EstadoPedido.abonado_parcialmente
+                )
 
-                return PedidoOut.model_validate(nuevo)
+            # 4) Crear pedido
+            nuevo = Pedido(
+                **{
+                    **pedido_create.model_dump(
+                        exclude_unset=True,
+                        exclude={
+                            "monto_total",
+                            "monto_abonado",
+                            "items",
+                            "id_repartodia",
+                        },
+                    ),
+                    "id_cuenta": id_cuenta,
+                    "monto_total": total,
+                    "monto_abonado": abonado,
+                    "estado": estado_inicial,
+                }
+            )
+            db.add(nuevo)
+            db.flush()
+
+            total_calculado = Decimal("0")
+
+            # 5) Items
+            for item in items:
+                cantidad = Decimal(item.cantidad)
+                precio_unitario = _q2(item.precio_unitario)
+                total_calculado += cantidad * precio_unitario
+
+                if item.id_producto:
+                    prod = db.get(Producto, item.id_producto)
+                    if not prod:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Producto {item.id_producto} inexistente.",
+                        )
+                    db.add(
+                        PedidoProducto(
+                            id_pedido=nuevo.id_pedido,
+                            id_producto=item.id_producto,
+                            id_combo=None,
+                            cantidad=int(cantidad),
+                            precio_unitario=precio_unitario,
+                        )
+                    )
+
+                elif item.id_combo:
+                    db.add(
+                        PedidoProducto(
+                            id_pedido=nuevo.id_pedido,
+                            id_producto=None,
+                            id_combo=item.id_combo,
+                            cantidad=int(cantidad),
+                            precio_unitario=precio_unitario,
+                        )
+                    )
+
+            total_calculado = _q2(total_calculado)
+            if total_calculado != total:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"monto_total ({total}) no coincide con items+servicios ({total_calculado}).",
+                )
+
+            db.commit()
+            db.refresh(nuevo)
+
+            return PedidoOut.model_validate(nuevo)
 
         except HTTPException:
+            db.rollback()
             raise
         except SQLAlchemyError as e:
             db.rollback()
             print("ERROR SQL crear_pedido:", repr(e))
             raise HTTPException(
                 status_code=500,
-                detail=str(e)
+                detail=str(e),
             )
 
     @staticmethod
