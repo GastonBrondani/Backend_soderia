@@ -70,10 +70,6 @@ def _validar_productos_existentes(db: Session, ids_productos: List[int]) -> None
 # ----------------- CRUD -----------------
 
 def crear_combo(db: Session, payload: ComboCreate) -> Combo:
-    """
-    Crea combo + composición (combo_producto) de forma atómica.
-    Compatible con SQLAlchemy 2.0 autobegin (no rompe por transacción ya iniciada).
-    """
     try:
         with _tx(db):
             ids = [p.id_producto for p in payload.productos]
@@ -87,7 +83,7 @@ def crear_combo(db: Session, payload: ComboCreate) -> Combo:
                 estado=payload.estado,
             )
             db.add(obj)
-            db.flush()  # ya tenemos obj.id_combo
+            db.flush()
 
             for item in payload.productos:
                 db.add(
@@ -98,12 +94,15 @@ def crear_combo(db: Session, payload: ComboCreate) -> Combo:
                     )
                 )
 
+        db.commit()
         db.refresh(obj)
         return obj
 
     except HTTPException:
+        db.rollback()
         raise
     except SQLAlchemyError as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=f"Error creando combo: {e}")
 
 
@@ -152,23 +151,15 @@ def obtener_combo_detalle(db: Session, id_combo: int) -> ComboDetalleOut:
 
 
 def actualizar_combo(db: Session, id_combo: int, payload: ComboUpdate) -> Combo:
-    """
-    Actualiza campos simples del combo.
-    Si payload.productos viene (incluso vacío), REEMPLAZA composición completa.
-    Compatible con SQLAlchemy 2.0 autobegin.
-    """
     obj = _get_combo_or_404(db, id_combo)
     updates = payload.model_dump(exclude_unset=True)
 
-
     try:
         with _tx(db):
-            # campos simples
             for k in ("nombre", "descripcion", "estado"):
                 if k in updates:
                     setattr(obj, k, updates[k])
 
-            # composición: reemplazo total si viene "productos"
             if "productos" in updates and updates["productos"] is not None:
                 nuevos = updates["productos"]
 
@@ -191,12 +182,15 @@ def actualizar_combo(db: Session, id_combo: int, payload: ComboUpdate) -> Combo:
 
             db.add(obj)
 
+        db.commit()
         db.refresh(obj)
         return obj
 
     except HTTPException:
+        db.rollback()
         raise
     except SQLAlchemyError as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=f"Error actualizando combo: {e}")
 
 
