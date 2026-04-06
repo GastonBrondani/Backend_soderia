@@ -32,6 +32,10 @@ from app.services.clienteRepartoDiaService import ClienteRepartoDiaService
 from app.services.pagoService import PagoService
 from app.models.comboProducto import ComboProducto
 
+#Generamos un historico en el pedido.
+from app.services.historicoService import registrar_evento_cliente
+from app.schemas.enumsHistorico import TipoEventoCodigoEnum
+
 
 TWOPLACES = Decimal("0.01")
 
@@ -391,6 +395,21 @@ class PedidoService:
                     estado="cliente_compra",
                 )
             )
+            # 10) Historico
+            registrar_evento_cliente(
+                db,
+                legajo=ped.legajo,
+                codigo_evento=TipoEventoCodigoEnum.PEDIDO_CONFIRMADO,
+                observacion=f"Pedido {ped.id_pedido} confirmado",
+                datos={
+                        "id_pedido": ped.id_pedido,
+                        "id_repartodia": ped.id_repartodia,
+                        "monto_total": str(ped.monto_total),
+                        "monto_abonado": str(ped.monto_abonado),
+                        "estado": str(ped.estado),
+                    },
+            )
+
 
             db.commit()
             db.refresh(ped)
