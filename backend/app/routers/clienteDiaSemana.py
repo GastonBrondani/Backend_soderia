@@ -106,7 +106,7 @@ def listar_clientes_por_fecha(
             (v.c.legajo == Cliente.legajo) & (v.c.rn == 1),
         )
         .where(ClienteDiaSemana.id_dia == id_dia)
-        .order_by(ClienteDiaSemana.turno_visita, Persona.apellido, Persona.nombre)
+        .order_by(ClienteDiaSemana.turno_visita,ClienteDiaSemana.orden,Persona.apellido,Persona.nombre,)
     )
 
     if turno:
