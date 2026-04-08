@@ -13,15 +13,19 @@ router = APIRouter(prefix="/agenda", tags=["Agenda"],dependencies=[Depends(get_c
 
 @router.post("/mover")
 def mover_cliente_agenda(payload: AgendaMoverIn, db: Session = Depends(get_db)):
-    insertar_cliente_en_agenda(
-        db=db,
-        id_cliente=payload.id_cliente,
-        id_dia=payload.id_dia,
-        turno=payload.turno,
-        posicion=payload.posicion,
-        despues_de_legajo=payload.despues_de_legajo,
-    )
-    db.commit()
-    return {"ok": True}
+    try:
+        insertar_cliente_en_agenda(
+            db=db,
+            id_cliente=payload.id_cliente,
+            id_dia=payload.id_dia,
+            turno=payload.turno,
+            posicion=payload.posicion,
+            despues_de_legajo=payload.despues_de_legajo,
+        )
+        db.commit()
+        return {"ok": True}
+    except Exception:
+        db.rollback()
+        raise
 
 
