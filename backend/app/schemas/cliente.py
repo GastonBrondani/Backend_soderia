@@ -115,3 +115,12 @@ class ClienteDetalleOut(ClienteOut):
         # datos de visita
     dias_visita: List[DiaSemanaEnum] = Field(default_factory=list)
     turno_visita: Optional[TurnoVisitaEnum] = None
+
+class ClienteListOut(ClienteBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    legajo: int
+    dni: int
+    persona: Optional[PersonaOut] = None
+    telefonos: List[TelefonoClienteOut] = Field(default_factory=list)
+    dias_semanas: List[ClienteDiaSemanaOut] = Field(default_factory=list)

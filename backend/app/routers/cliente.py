@@ -16,7 +16,8 @@ from sqlalchemy import select
 from app.schemas.cliente import (
     ClienteCreate,
     ClienteOut,
-    ClienteUpdate,    
+    ClienteUpdate,
+    ClienteListOut,
 )
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
@@ -308,13 +309,16 @@ def CrearCliente(payload: ClienteCreate, db: Session = Depends(get_db)):
 def ObtenerDetalleCliente(legajo: int, db: Session = Depends(get_db)):
     return ClienteService.get_detalle_cliente(db, legajo)
 
-@router.get("/", response_model=List[ClienteOut], status_code=status.HTTP_200_OK)
+@router.get("/", response_model=List[ClienteListOut], status_code=status.HTTP_200_OK)
 def ListarClientes(db: Session = Depends(get_db)):
     clientes = (
         db.query(Cliente)
-          .options(selectinload(Cliente.persona))
-          .filter(Cliente.id_empresa == 1)
-          .all()
+        .options(
+            selectinload(Cliente.persona),
+            selectinload(Cliente.telefonos),
+        )
+        .filter(Cliente.id_empresa == 1)
+        .all()
     )
     return clientes
 
