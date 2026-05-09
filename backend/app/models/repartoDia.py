@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from .clienteRepartoDia import ClienteRepartoDia
     from .recorrido import Recorrido
     from .pedido import Pedido
+    from .movimientoEnvaseCliente import MovimientoEnvaseCliente
 
 from sqlalchemy import Integer, Date, Numeric, Text, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -58,6 +59,9 @@ class RepartoDia(Base):
     "Pedido",
     back_populates="reparto_dia",
     passive_deletes=True
+    )
+    movimientos_envase: Mapped[List["MovimientoEnvaseCliente"]] = relationship(
+    "MovimientoEnvaseCliente", back_populates="reparto_dia"
     )
 
     def __repr__(self) -> str:

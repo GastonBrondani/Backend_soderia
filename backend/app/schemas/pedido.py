@@ -4,6 +4,7 @@ from enum import StrEnum
 from datetime import datetime
 from decimal import Decimal
 from app.schemas.pedidoProducto import PedidoItemIn
+from app.schemas.envaseCliente import EnvaseMovimientoPedidoIn
 
 
 class PedidoServicioCreate(BaseModel):
@@ -26,6 +27,7 @@ class PedidoItemCreate(BaseModel):
     id_producto: int
     cantidad: Decimal
     precio_unitario: Decimal
+
 
 
 class PedidoBase(BaseModel):
@@ -73,6 +75,7 @@ class PedidoOut(PedidoBase):
 
 class PedidoConfirmarIn(BaseModel):
     id_repartodia: int
+    envases: List[EnvaseMovimientoPedidoIn] = Field(default_factory=list)
 
 
 # EMMA

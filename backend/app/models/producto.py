@@ -9,7 +9,8 @@ if TYPE_CHECKING:
     from .productoCliente import ProductoCliente
     from .stock import Stock
     from .comboProducto import ComboProducto
-
+    from .movimientoEnvaseCliente import MovimientoEnvaseCliente
+    
 from sqlalchemy import Integer, String, Numeric, Text, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
@@ -30,7 +31,18 @@ class Producto(Base):
     litros: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
     tipo_dispenser: Mapped[Optional[str]] = mapped_column(String(50))
     observacion: Mapped[Optional[str]] = mapped_column(Text)
-
+    descuenta_stock: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default="true",
+    )
+    es_envase: Mapped[bool] = mapped_column(
+    Boolean,
+    nullable=False,
+    default=False,
+    server_default="false",
+    )
     #Relaciones
     listas_precios: Mapped[List["ListaPrecioProducto"]] = relationship(
         "ListaPrecioProducto", back_populates="producto"
@@ -49,12 +61,9 @@ class Producto(Base):
         "Stock", back_populates="producto"
     )
     combos_productos: Mapped[List["ComboProducto"]] = relationship("ComboProducto", back_populates="producto")
-    descuenta_stock: Mapped[bool] = mapped_column(
-        Boolean,
-        nullable=False,
-        default=True,
-        server_default="true",
-    )
+    movimientos_envase_cliente: Mapped[List["MovimientoEnvaseCliente"]] = relationship(
+    "MovimientoEnvaseCliente", back_populates="producto")
+    
 
     def __repr__(self) -> str:
         return f"<Producto id={self.id_producto} nombre={self.nombre} estado={self.estado}>"

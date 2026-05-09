@@ -13,6 +13,7 @@ class ProductoBase(BaseModel):
     observacion: Optional[str] = None
     stock_inicial: Optional[int] = None        # cantidad inicial
     id_empresa_stock: Optional[int] = None     # empresa donde se crea el stock inicial
+    es_envase: bool = False
 
     stock_inicial: Optional[int] = None        # cantidad inicial
     id_empresa_stock: Optional[int] = None     # empresa donde se crea el stock inicial
