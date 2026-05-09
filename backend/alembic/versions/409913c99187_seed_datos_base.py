@@ -60,11 +60,11 @@ def upgrade():
 
     # Ajustar secuencias/seriales para que no fallen futuros inserts
     op.execute("""
-        SELECT setval(
-            pg_get_serial_sequence('dia', 'id_dia'),
-            COALESCE((SELECT MAX(id_dia) FROM dia_semana), 1),
-            true
-        );
+    SELECT setval(
+        pg_get_serial_sequence('dia_semana', 'id_dia'),
+        COALESCE((SELECT MAX(id_dia) FROM dia_semana), 1),
+        true
+    );
     """)
 
     op.execute("""
@@ -92,11 +92,11 @@ def upgrade():
     """)
 
     op.execute("""
-        SELECT setval(
-            pg_get_serial_sequence('evento', 'id_evento'),
-            COALESCE((SELECT MAX(id_evento) FROM tipo_evento), 1),
-            true
-        );
+    SELECT setval(
+        pg_get_serial_sequence('tipo_evento', 'id_evento'),
+        COALESCE((SELECT MAX(id_evento) FROM tipo_evento), 1),
+        true
+    );
     """)
 
 

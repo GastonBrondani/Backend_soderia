@@ -36,6 +36,8 @@ from app.models.comboProducto import ComboProducto
 from app.services.historicoService import registrar_evento_cliente
 from app.schemas.enumsHistorico import TipoEventoCodigoEnum
 
+from app.services.envaseClienteService import EnvaseClienteService
+
 
 TWOPLACES = Decimal("0.01")
 
@@ -327,6 +329,20 @@ class PedidoService:
                                 observacion=f"Venta pedido {ped.id_pedido} (combo {it.id_combo})",
                             )
                         )
+            # 4.5) ENVASES entregados/devueltos explícitamente
+            for envase in data.envases:
+                EnvaseClienteService.registrar_movimiento(
+                    db,
+                    legajo=ped.legajo,
+                    id_producto=envase.id_producto,
+                    id_empresa=ped.id_empresa,
+                    entregados=envase.entregados,
+                    devueltos=envase.devueltos,
+                    id_repartodia=ped.id_repartodia,
+                    id_pedido=ped.id_pedido,
+                    observacion=envase.observacion,
+                    fecha=now,
+                )
 
             # 5) Cargar compra a cuenta
             _aplicar_compra_a_cuenta(cuenta, total)
@@ -402,12 +418,21 @@ class PedidoService:
                 codigo_evento=TipoEventoCodigoEnum.PEDIDO_CONFIRMADO,
                 observacion=f"Pedido {ped.id_pedido} confirmado",
                 datos={
-                        "id_pedido": ped.id_pedido,
-                        "id_repartodia": ped.id_repartodia,
-                        "monto_total": str(ped.monto_total),
-                        "monto_abonado": str(ped.monto_abonado),
-                        "estado": str(ped.estado),
-                    },
+                    "id_pedido": ped.id_pedido,
+                    "id_repartodia": ped.id_repartodia,
+                    "monto_total": str(ped.monto_total),
+                    "monto_abonado": str(ped.monto_abonado),
+                    "estado": str(ped.estado),
+                    "envases": [
+                        {
+                            "id_producto": envase.id_producto,
+                            "entregados": envase.entregados,
+                            "devueltos": envase.devueltos,
+                            "observacion": envase.observacion,
+                        }
+                        for envase in data.envases
+                    ],
+                },
             )
 
 

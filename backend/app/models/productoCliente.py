@@ -1,11 +1,12 @@
 from __future__ import annotations
 from datetime import date
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
+
 
 if TYPE_CHECKING:
     from .producto import Producto
     from .cliente import Cliente
-    
+    from .movimientoEnvaseCliente import MovimientoEnvaseCliente
 
 from sqlalchemy import Integer, String, Date, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -31,7 +32,7 @@ class ProductoCliente(Base):
     )
 
     #Campos
-    cantidad: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+    cantidad: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     estado: Mapped[str | None] = mapped_column(String(30))
     fecha_entrega: Mapped[date | None] = mapped_column(Date)
 
@@ -41,7 +42,14 @@ class ProductoCliente(Base):
     )
     cliente: Mapped["Cliente"] = relationship(
         "Cliente",back_populates="productos"
-    )  
+    )
+    movimientos_envase: Mapped[List["MovimientoEnvaseCliente"]] = relationship(
+    "MovimientoEnvaseCliente",
+    primaryjoin="and_(ProductoCliente.legajo == MovimientoEnvaseCliente.legajo, "
+                "ProductoCliente.id_producto == MovimientoEnvaseCliente.id_producto)",
+    foreign_keys="[MovimientoEnvaseCliente.legajo, MovimientoEnvaseCliente.id_producto]",
+    viewonly=True,
+)
     
     def __repr__(self) -> str:
         return (
