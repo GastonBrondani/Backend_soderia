@@ -1,13 +1,15 @@
 from datetime import date, datetime
 from decimal import Decimal
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from fastapi import HTTPException
 
 from app.models.clienteCuenta import ClienteCuenta
 from app.models.clienteServicio import ClienteServicio
 from app.models.clienteServicioPeriodo import ClienteServicioPeriodo
 from app.services.pagoService import PagoService
+from app.services.historicoService import registrar_evento_cliente
+from app.schemas.enumsHistorico import TipoEventoCodigoEnum
 
 from app.utils.periodos import mes_inicio, vencimiento_mes
 
@@ -102,6 +104,23 @@ def crear_servicio_alquiler_dispenser(
         estado="PENDIENTE",
         fecha_pago=None,
     )
+    try:
+        registrar_evento_cliente(
+            db,
+            legajo=legajo,
+            codigo_evento=TipoEventoCodigoEnum.DISPENSER_ALTA,
+            observacion=f"Alta de alquiler dispenser a ${monto_mensual}/mes",
+            datos={
+                "id_cliente_servicio": srv.id_cliente_servicio,
+                "monto_mensual": str(monto_mensual),
+                "fecha_inicio": fecha_inicio.isoformat(),
+                "id_periodo": per.id_periodo,
+                "periodo": per.periodo.isoformat(),
+            },
+        )
+    except RuntimeError:
+        pass
+
     db.flush()
     return srv, per
 
@@ -182,6 +201,7 @@ def marcar_vencidos(db: Session) -> int:
 
     stmt = (
         select(ClienteServicioPeriodo)
+        .options(selectinload(ClienteServicioPeriodo.servicio))
         .where(
             ClienteServicioPeriodo.estado == "PENDIENTE",
             ClienteServicioPeriodo.fecha_vencimiento < hoy,
@@ -195,6 +215,21 @@ def marcar_vencidos(db: Session) -> int:
     for per in periodos:
         per.estado = "VENCIDO"
         procesados += 1
+        try:
+            registrar_evento_cliente(
+                db,
+                legajo=per.servicio.legajo,
+                codigo_evento=TipoEventoCodigoEnum.PERIODO_VENCIDO,
+                observacion=f"Período {per.periodo.strftime('%Y-%m')} de dispenser vencido",
+                datos={
+                    "id_periodo": per.id_periodo,
+                    "periodo": per.periodo.isoformat(),
+                    "monto_pendiente": str(per.monto_pendiente),
+                    "id_cliente_servicio": per.id_cliente_servicio,
+                },
+            )
+        except RuntimeError:
+            pass
 
     return procesados
 
@@ -279,6 +314,23 @@ def pagar_periodo_servicio(
     per.fecha_pago = date.today()
     per.monto_pendiente = Decimal("0")
 
+    try:
+        registrar_evento_cliente(
+            db,
+            legajo=legajo,
+            codigo_evento=TipoEventoCodigoEnum.DISPENSER_PAGO,
+            observacion=f"Pago alquiler dispenser {per.periodo.strftime('%Y-%m')}",
+            datos={
+                "id_periodo": per.id_periodo,
+                "periodo": per.periodo.isoformat(),
+                "monto": str(monto),
+                "id_pago": pago.id_pago if pago else None,
+                "usando_saldo": usar_saldo,
+            },
+        )
+    except RuntimeError:
+        pass
+
     return pago, monto
 
 
@@ -308,6 +360,7 @@ def actualizar_monto_servicio(
         raise HTTPException(status_code=409, detail="El servicio está inactivo.")
 
     # 1) actualizar precio base del servicio
+    monto_anterior = Decimal(str(srv.monto_mensual))
     srv.monto_mensual = nuevo_monto
 
     # 2) opcional: actualizar períodos no pagados desde vigencia
@@ -332,7 +385,56 @@ def actualizar_monto_servicio(
             if p.estado == "PENDIENTE":
                 p.monto_pendiente = nuevo_monto
 
+    try:
+        registrar_evento_cliente(
+            db,
+            legajo=srv.legajo,
+            codigo_evento=TipoEventoCodigoEnum.CAMBIO_PRECIO_DISPENSER,
+            observacion=f"Cambio de precio dispenser de ${monto_anterior} a ${nuevo_monto}",
+            datos={
+                "id_cliente_servicio": srv.id_cliente_servicio,
+                "monto_anterior": str(monto_anterior),
+                "monto_nuevo": str(nuevo_monto),
+                "aplicar_desde": vigencia.isoformat(),
+            },
+        )
+    except RuntimeError:
+        pass
+
     return srv
+
+
+def dar_de_baja_dispenser(db: Session, id_cliente_servicio: int) -> ClienteServicio:
+    srv = db.execute(
+        select(ClienteServicio)
+        .where(ClienteServicio.id_cliente_servicio == id_cliente_servicio)
+        .with_for_update()
+    ).scalar_one_or_none()
+
+    if not srv:
+        raise HTTPException(status_code=404, detail="Servicio inexistente.")
+    if not srv.activo:
+        raise HTTPException(status_code=409, detail="El servicio ya está inactivo.")
+
+    srv.activo = False
+
+    try:
+        registrar_evento_cliente(
+            db,
+            legajo=srv.legajo,
+            codigo_evento=TipoEventoCodigoEnum.DISPENSER_DADO_DE_BAJA,
+            observacion="Baja del alquiler de dispenser",
+            datos={
+                "id_cliente_servicio": srv.id_cliente_servicio,
+                "monto_mensual": str(srv.monto_mensual),
+                "fecha_inicio": srv.fecha_inicio.isoformat(),
+            },
+        )
+    except RuntimeError:
+        pass
+
+    return srv
+
 
 def listar_servicios_cliente(db: Session, legajo: int):
     return (
