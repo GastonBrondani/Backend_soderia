@@ -604,6 +604,23 @@ class PedidoService:
                     detail=f"monto_total ({total}) no coincide con items+servicios ({total_calculado}).",
                 )
 
+            try:
+                registrar_evento_cliente(
+                    db,
+                    legajo=nuevo.legajo,
+                    codigo_evento=TipoEventoCodigoEnum.PEDIDO_CREADO,
+                    observacion=f"Pedido {nuevo.id_pedido} creado",
+                    datos={
+                        "id_pedido": nuevo.id_pedido,
+                        "monto_total": str(nuevo.monto_total),
+                        "monto_abonado": str(nuevo.monto_abonado),
+                        "id_repartodia": nuevo.id_repartodia,
+                        "estado": str(nuevo.estado),
+                    },
+                )
+            except RuntimeError:
+                pass
+
             db.commit()
             db.refresh(nuevo)
 
@@ -698,6 +715,29 @@ class PedidoService:
                     raise HTTPException(
                         status_code=409, detail="El cliente no tiene cuenta creada."
                     )
+
+                try:
+                    registrar_evento_cliente(
+                        db,
+                        legajo=data.legajo,
+                        codigo_evento=TipoEventoCodigoEnum.PAGO_DEUDA_REGISTRADO,
+                        observacion=data.observacion or "Pago de cuenta sin pedido",
+                        datos={
+                            "monto": str(monto),
+                            "deuda_restante": str(cuenta.deuda),
+                            "saldo_actual": str(cuenta.saldo),
+                        },
+                    )
+                    if _q2(cuenta.deuda) == Decimal("0"):
+                        registrar_evento_cliente(
+                            db,
+                            legajo=data.legajo,
+                            codigo_evento=TipoEventoCodigoEnum.DEUDA_CANCELADA_TOTAL,
+                            observacion="Deuda saldada completamente",
+                            datos={"monto_pagado": str(monto)},
+                        )
+                except RuntimeError:
+                    pass
 
                 db.flush()
                 return ClienteCuentaOut.model_validate(cuenta)

@@ -16,6 +16,8 @@ from app.models.repartoDia import RepartoDia
 from app.models.cajaEmpresa import CajaEmpresa
 from app.schemas.pago import PagoLibreIn, PagoLibreOut
 from app.services.comprobantePagoService import ComprobantePagoService
+from app.services.historicoService import registrar_evento_cliente
+from app.schemas.enumsHistorico import TipoEventoCodigoEnum
 
 TWOPLACES = Decimal("0.01")
 
@@ -251,6 +253,23 @@ class PagoService:
             db,
             id_pago=pago.id_pago,
         )
+
+        # 3️⃣ Registrar en histórico del cliente
+        if data.legajo is not None:
+            try:
+                registrar_evento_cliente(
+                    db,
+                    legajo=data.legajo,
+                    codigo_evento=TipoEventoCodigoEnum.PAGO_DEUDA_REGISTRADO,
+                    observacion=data.observacion or "Pago libre de deuda",
+                    datos={
+                        "monto": str(data.monto),
+                        "id_pago": pago.id_pago,
+                    },
+                )
+                db.commit()
+            except RuntimeError:
+                db.rollback()
 
         return PagoLibreOut(
             id_pago=pago.id_pago,

@@ -212,10 +212,22 @@ class ClienteService:
                 "cuentas",
             )
 
+        if cambios:
+            try:
+                registrar_evento_cliente(
+                    db,
+                    legajo=legajo,
+                    codigo_evento=TipoEventoCodigoEnum.CLIENTE_ACTUALIZADO,
+                    observacion="Datos del cliente actualizados",
+                    datos=cambios,
+                )
+            except RuntimeError:
+                pass
+
         db.commit()
         db.refresh(cliente)
-        
-        return ClienteDetalleOut.model_validate(cliente) 
+
+        return ClienteDetalleOut.model_validate(cliente)
         
 
 

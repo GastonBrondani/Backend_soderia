@@ -10,6 +10,7 @@ from app.services.clienteServicioService import (
     pagar_periodo_servicio,
     actualizar_monto_servicio,
     listar_servicios_cliente,
+    dar_de_baja_dispenser,
 )
 from app.schemas.servicios import ServicioMontoUpdate, ClienteServicioOut
 
@@ -84,6 +85,20 @@ def pagar(
             if pago
             else {"ok": True, "id_pago": None, "monto": str(monto)}
         )
+    except Exception:
+        db.rollback()
+        raise
+
+
+@router.delete("/{id_cliente_servicio}/alquiler-dispenser")
+def baja_alquiler_dispenser(
+    id_cliente_servicio: int,
+    db: Session = Depends(get_db),
+):
+    try:
+        srv = dar_de_baja_dispenser(db, id_cliente_servicio)
+        db.commit()
+        return {"ok": True, "id_cliente_servicio": srv.id_cliente_servicio, "activo": srv.activo}
     except Exception:
         db.rollback()
         raise
