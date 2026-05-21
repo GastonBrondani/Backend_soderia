@@ -1,6 +1,7 @@
+from datetime import datetime
 from decimal import Decimal
 from typing import Optional
-from pydantic import BaseModel, field_validator,ConfigDict
+from pydantic import BaseModel, field_validator, ConfigDict
 
 class ClienteCuentaBase(BaseModel):
     saldo: Optional[Decimal] = None
@@ -31,5 +32,27 @@ class ClienteCuentaOut(ClienteCuentaBase):
     saldo: Optional[Decimal] = Decimal("0")
     deuda: Optional[Decimal] = Decimal("0")
     numero_bidones: Optional[int] = 0
+
+
+class AplicarInteresIn(BaseModel):
+    porcentaje: Decimal
+    observacion: Optional[str] = None
+
+    @field_validator("porcentaje")
+    @classmethod
+    def validar_porcentaje(cls, v: Decimal) -> Decimal:
+        if v <= 0 or v > 100:
+            raise ValueError("El porcentaje debe estar entre 0 y 100.")
+        return v
+
+
+class AplicarInteresOut(BaseModel):
+    id_cuenta: int
+    legajo: int
+    deuda_anterior: Decimal
+    interes_aplicado: Decimal
+    deuda_nueva: Decimal
+    porcentaje: Decimal
+    fecha: datetime
 
     

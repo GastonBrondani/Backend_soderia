@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+from decimal import Decimal, ROUND_HALF_UP
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.security import get_current_user
 from sqlalchemy.orm import Session
@@ -6,7 +8,23 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.api.deps import get_cliente_or_404_dep
 from app.models.clienteCuenta import ClienteCuenta
-from app.schemas.clienteCuenta import ClienteCuentaCreate, ClienteCuentaOut, ClienteCuentaUpdate
+from app.models.pedido import Pedido
+from app.schemas.clienteCuenta import (
+    ClienteCuentaCreate,
+    ClienteCuentaOut,
+    ClienteCuentaUpdate,
+    AplicarInteresIn,
+    AplicarInteresOut,
+)
+from app.services.historicoService import registrar_evento_cliente
+from app.schemas.enumsHistorico import TipoEventoCodigoEnum
+
+_TWOPLACES = Decimal("0.01")
+
+
+def _q2(v) -> Decimal:
+    v = Decimal("0") if v is None else Decimal(str(v))
+    return v.quantize(_TWOPLACES, rounding=ROUND_HALF_UP)
 
 router = APIRouter(prefix="/clientes/{legajo}", tags=["ClienteCuenta"],dependencies=[Depends(get_current_user)],)
 
@@ -55,3 +73,80 @@ def actualizar_cuenta(legajo: int, id_cuenta: int, payload: ClienteCuentaUpdate,
     db.commit()
     db.refresh(cuenta)
     return cuenta
+
+
+@router.post("/cuentas/{id_cuenta}/aplicar-interes", response_model=AplicarInteresOut, status_code=200)
+def aplicar_interes(
+    legajo: int,
+    id_cuenta: int,
+    payload: AplicarInteresIn,
+    db: Session = Depends(get_db),
+):
+    get_cliente_or_404_dep(legajo, db)
+
+    cuenta = db.execute(
+        select(ClienteCuenta)
+        .where(ClienteCuenta.legajo == legajo, ClienteCuenta.id_cuenta == id_cuenta)
+        .with_for_update()
+    ).scalar_one_or_none()
+    if cuenta is None:
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada.")
+
+    deuda_anterior = _q2(cuenta.deuda or Decimal("0"))
+    if deuda_anterior <= Decimal("0"):
+        raise HTTPException(status_code=400, detail="El cliente no tiene deuda pendiente.")
+
+    # Verificar que exista al menos un pedido impago con más de 30 días de antigüedad
+    limite_fecha = datetime.now() - timedelta(days=30)
+    pedido_vencido = db.execute(
+        select(Pedido).where(
+            Pedido.legajo == legajo,
+            Pedido.estado.in_(["pendiente", "abonado_parcialmente"]),
+            Pedido.fecha <= limite_fecha,
+        )
+    ).scalar_one_or_none()
+
+    if pedido_vencido is None:
+        raise HTTPException(
+            status_code=400,
+            detail="No hay deuda pendiente con más de 30 días de antigüedad.",
+        )
+
+    porcentaje = _q2(payload.porcentaje)
+    interes = _q2(deuda_anterior * porcentaje / Decimal("100"))
+    if interes <= Decimal("0"):
+        raise HTTPException(status_code=400, detail="El interés calculado es $0.00.")
+
+    cuenta.deuda = _q2(deuda_anterior + interes)
+    fecha = datetime.now()
+
+    try:
+        registrar_evento_cliente(
+            db,
+            legajo=legajo,
+            codigo_evento=TipoEventoCodigoEnum.INTERES_APLICADO,
+            observacion=payload.observacion or f"Interés del {porcentaje}% aplicado sobre deuda de ${deuda_anterior}",
+            datos={
+                "id_cuenta": id_cuenta,
+                "deuda_anterior": str(deuda_anterior),
+                "interes_aplicado": str(interes),
+                "deuda_nueva": str(cuenta.deuda),
+                "porcentaje": str(porcentaje),
+            },
+        )
+    except RuntimeError:
+        # El tipo_evento INTERES_APLICADO no existe en la tabla tipo_evento.
+        # Insertar: INSERT INTO tipo_evento (nombre) VALUES ('INTERES_APLICADO');
+        pass
+
+    db.commit()
+
+    return AplicarInteresOut(
+        id_cuenta=cuenta.id_cuenta,
+        legajo=cuenta.legajo,
+        deuda_anterior=deuda_anterior,
+        interes_aplicado=interes,
+        deuda_nueva=cuenta.deuda,
+        porcentaje=porcentaje,
+        fecha=fecha,
+    )
