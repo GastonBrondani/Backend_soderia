@@ -57,6 +57,11 @@ def listar_repartos_por_rango(
         id_usuario=id_usuario,
     )
 
+
+@router.post("/{id_repartodia}/cerrar", response_model=RepartoDiaOut)
+def cerrar_reparto_dia(id_repartodia: int, db: Session = Depends(get_db)):
+    return RepartoDiaService.cerrar(db, id_repartodia=id_repartodia)
+
     
 #--------------------------------------------
 #Desabilitado por ahora el actulizar reparto del dia y eliminar
