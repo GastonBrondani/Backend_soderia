@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from fastapi import APIRouter, Depends, HTTPException
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_admin, CurrentUser
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -61,7 +61,13 @@ def obtener_cuenta(legajo: int, id_cuenta: int, db: Session = Depends(get_db)):
     return _get_cuenta_or_404(db, legajo, id_cuenta)
 
 @router.put("/cuentas/{id_cuenta}", response_model=ClienteCuentaOut)
-def actualizar_cuenta(legajo: int, id_cuenta: int, payload: ClienteCuentaUpdate, db: Session = Depends(get_db)):
+def actualizar_cuenta(
+    legajo: int,
+    id_cuenta: int,
+    payload: ClienteCuentaUpdate,
+    db: Session = Depends(get_db),
+    _: CurrentUser = Depends(require_admin),
+):
     get_cliente_or_404_dep(legajo, db)
     cuenta = _get_cuenta_or_404(db, legajo, id_cuenta)
 
