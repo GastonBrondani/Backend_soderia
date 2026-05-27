@@ -40,6 +40,8 @@ from app.models.historico import Historico
 from app.schemas.historico import HistoricoOut
 from app.models.pedido import Pedido
 from app.schemas.pedido import PedidoOutCorto
+from app.models.productoCliente import ProductoCliente
+from app.schemas.productoCliente import ProductoClienteOut
 #------------------------------------EMMA------------------------------------------------
 
 
@@ -451,6 +453,24 @@ def listar_pedidos_cliente(
 
 #------------------------------------EMMA------------------------------------------------
 
+@router.get(
+    "/{legajo}/productos",
+    response_model=List[ProductoClienteOut],
+    status_code=status.HTTP_200_OK,
+)
+def listar_productos_cliente(legajo: int, db: Session = Depends(get_db)):
+    cliente = db.get(Cliente, legajo)
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
 
-    
+    from sqlalchemy.orm import joinedload as jl
+    stmt = (
+        select(ProductoCliente)
+        .where(ProductoCliente.legajo == legajo)
+        .options(jl(ProductoCliente.producto))
+    )
+    rows = db.execute(stmt).scalars().all()
+    return [ProductoClienteOut.model_validate(r) for r in rows]
+
+
 
