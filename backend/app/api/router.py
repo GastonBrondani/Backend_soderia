@@ -30,6 +30,7 @@ from app.routers import (
     agenda,
     documentos,
     servicios,
+    reportes,
 )
 
 # Los comentados por ahora no se usan
@@ -63,5 +64,6 @@ api_router.include_router(combo.router)
 api_router.include_router(pago.router)
 api_router.include_router(agenda.router)
 api_router.include_router(documentos.router)   
-api_router.include_router(servicios.router) 
+api_router.include_router(servicios.router)
+api_router.include_router(reportes.router)
 

@@ -38,6 +38,7 @@ Thumbs.db
 
 #Diagramas y tools
 tools/
+excel_para_ia
 
 #Pruebas
 verify_dates.py
