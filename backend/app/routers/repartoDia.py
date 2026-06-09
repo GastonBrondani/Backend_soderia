@@ -8,9 +8,22 @@ from app.core.database import get_db
 from app.schemas.repartoDia import (
     RepartoDiaCreate, RepartoDiaUpdate, RepartoDiaOut, RegistrarCobroIn
 )
+from app.schemas.bootstrap import RepartoBootstrapOut
 from app.services.repartoDiaService import RepartoDiaService
+from app.services.bootstrapService import reparto_bootstrap
 
 router = APIRouter(prefix="/repartos-dia", tags=["Reparto Día"],dependencies=[Depends(get_current_user)],)
+
+
+# Offline sync: baja en una sola request el reparto del día + los clientes a
+# visitar (dirección, teléfono, cuenta, saldo/deuda y estado de visita).
+@router.get("/bootstrap", response_model=RepartoBootstrapOut)
+def bootstrap_reparto_dia(
+    fecha: date = Query(..., description="Fecha del reparto (YYYY-MM-DD)"),
+    id_empresa: Optional[int] = Query(None, description="Empresa (opcional)"),
+    db: Session = Depends(get_db),
+):
+    return reparto_bootstrap(db, fecha=fecha, id_empresa=id_empresa)
 
 @router.post("/", response_model=RepartoDiaOut, status_code=status.HTTP_201_CREATED)
 

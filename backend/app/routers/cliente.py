@@ -41,7 +41,12 @@ from app.schemas.historico import HistoricoOut
 from app.models.pedido import Pedido
 from app.schemas.pedido import PedidoOutCorto
 from app.models.productoCliente import ProductoCliente
-from app.schemas.productoCliente import ProductoClienteOut
+from app.models.producto import Producto
+from app.schemas.productoCliente import (
+    ProductoClienteOut,
+    ProductoClienteUpsert,
+    ProductoClientePatch,
+)
 #------------------------------------EMMA------------------------------------------------
 
 
@@ -471,6 +476,85 @@ def listar_productos_cliente(legajo: int, db: Session = Depends(get_db)):
     )
     rows = db.execute(stmt).scalars().all()
     return [ProductoClienteOut.model_validate(r) for r in rows]
+
+
+def _get_producto_cliente_con_producto(db: Session, legajo: int, id_producto: int) -> ProductoCliente:
+    """Recarga el producto_cliente con la relación producto (para el response)."""
+    from sqlalchemy.orm import joinedload as jl
+    return db.execute(
+        select(ProductoCliente)
+        .where(
+            ProductoCliente.legajo == legajo,
+            ProductoCliente.id_producto == id_producto,
+        )
+        .options(jl(ProductoCliente.producto))
+    ).scalar_one()
+
+
+@router.put(
+    "/{legajo}/productos/{id_producto}",
+    response_model=ProductoClienteOut,
+    status_code=status.HTTP_200_OK,
+)
+def upsert_producto_cliente(
+    legajo: int,
+    id_producto: int,
+    payload: ProductoClienteUpsert,
+    db: Session = Depends(get_db),
+):
+    """
+    Crea o reemplaza por completo el producto del cliente (PUT idempotente).
+    Si no existía la fila, la crea; si existía, sobreescribe todos los campos.
+    """
+    if not db.get(Cliente, legajo):
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    if not db.get(Producto, id_producto):
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+
+    fila = db.get(ProductoCliente, {"legajo": legajo, "id_producto": id_producto})
+    if fila is None:
+        fila = ProductoCliente(legajo=legajo, id_producto=id_producto)
+        db.add(fila)
+
+    fila.cantidad = payload.cantidad
+    fila.estado = payload.estado
+    fila.fecha_entrega = payload.fecha_entrega
+
+    db.commit()
+    return _get_producto_cliente_con_producto(db, legajo, id_producto)
+
+
+@router.patch(
+    "/{legajo}/productos/{id_producto}",
+    response_model=ProductoClienteOut,
+    status_code=status.HTTP_200_OK,
+)
+def actualizar_producto_cliente(
+    legajo: int,
+    id_producto: int,
+    payload: ProductoClientePatch,
+    db: Session = Depends(get_db),
+):
+    """
+    Actualiza parcialmente el producto del cliente (PATCH).
+    Solo modifica los campos enviados; la fila debe existir (404 si no).
+    """
+    fila = db.get(ProductoCliente, {"legajo": legajo, "id_producto": id_producto})
+    if fila is None:
+        raise HTTPException(
+            status_code=404,
+            detail="El cliente no tiene ese producto asignado.",
+        )
+
+    cambios = payload.model_dump(exclude_unset=True)
+    if not cambios:
+        raise HTTPException(status_code=422, detail="No se enviaron campos para actualizar.")
+
+    for campo, valor in cambios.items():
+        setattr(fila, campo, valor)
+
+    db.commit()
+    return _get_producto_cliente_con_producto(db, legajo, id_producto)
 
 
 

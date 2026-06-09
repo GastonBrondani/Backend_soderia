@@ -17,6 +17,9 @@ from sqlalchemy import Integer, String, Text, Numeric, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
+# Longitud usada para las claves de idempotencia/UUID del cliente (offline sync)
+IDEMPOTENCY_KEY_LEN = 80
+
 #SCHEMA = "soderia"
 
 
@@ -61,6 +64,14 @@ class Pedido(Base):
         server_default="pendiente",
     )
     observacion: Mapped[Optional[str]] = mapped_column(Text)
+
+    # Offline sync: clave de idempotencia (única) y uuid generado por la tablet
+    idempotency_key: Mapped[Optional[str]] = mapped_column(
+        String(IDEMPOTENCY_KEY_LEN), nullable=True, unique=True, index=True
+    )
+    client_uuid: Mapped[Optional[str]] = mapped_column(
+        String(IDEMPOTENCY_KEY_LEN), nullable=True
+    )
 
     #Relaciones
     cliente: Mapped["Cliente"] = relationship(

@@ -1,5 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from app.core.security import get_current_user
 from sqlalchemy.orm import Session
 from datetime import date
@@ -13,12 +12,18 @@ from app.services.comprobantePedidoService import ComprobantePedidoService
 router = APIRouter(prefix="/pedidos", tags=["Pedidos"],dependencies=[Depends(get_current_user)],)
 
 @router.post("/", response_model=PedidoOut, status_code=status.HTTP_201_CREATED)
-def crear_pedido(data: PedidoCreate, db: Session = Depends(get_db)):
+def crear_pedido(data: PedidoCreate, response: Response, db: Session = Depends(get_db)):
     """
     Crea un pedido y ajusta la deuda del cliente (cliente_cuenta.deuda)
     en una sola transacción. Si el cliente no tiene cuenta, responde 409.
+
+    Soporta idempotencia (offline sync): si llega un `idempotency_key` ya
+    usado, no se duplica el pedido y se devuelve el original con 200.
     """
-    return PedidoService.crear_pedido(db, data)
+    pedido, creado = PedidoService.crear_pedido(db, data)
+    if not creado:
+        response.status_code = status.HTTP_200_OK
+    return pedido
 
 @router.post("/{id_pedido}/confirmar", response_model=PedidoOut, status_code=status.HTTP_200_OK)
 def confirmar_pedido(id_pedido: int, data: PedidoConfirmarIn, db: Session = Depends(get_db)):

@@ -45,6 +45,10 @@ class PedidoBase(BaseModel):
     id_cuenta: Optional[int] = None
     items: Optional[List[PedidoItemIn]] = None
 
+    # Offline sync: idempotencia. La tablet manda estos valores al reintentar.
+    idempotency_key: Optional[str] = None
+    client_uuid: Optional[str] = None
+
     @field_validator("estado", "observacion")
     @classmethod
     def strip_strings(cls, v: Optional[str]) -> Optional[str]:

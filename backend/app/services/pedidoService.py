@@ -1,7 +1,7 @@
 from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy import select, cast, Date
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from fastapi import HTTPException
 from datetime import date, datetime
 
@@ -30,6 +30,7 @@ from app.schemas.enumsStock import TipoMovimiento
 
 from app.services.clienteRepartoDiaService import ClienteRepartoDiaService
 from app.services.pagoService import PagoService
+from app.services.idempotencyService import buscar_por_idempotency_key
 from app.models.comboProducto import ComboProducto
 
 #Generamos un historico en el pedido.
@@ -472,10 +473,22 @@ class PedidoService:
         return [PedidoOut.model_validate(p) for p in pedidos]
 
     @staticmethod
-    def crear_pedido(db: Session, pedido_create: PedidoCreate) -> PedidoOut:
+    def crear_pedido(db: Session, pedido_create: PedidoCreate) -> tuple[PedidoOut, bool]:
+        """Crea un pedido. Devuelve (pedido, creado).
+
+        `creado=False` significa que el pedido ya existía (mismo
+        idempotency_key) y se devuelve el original sin duplicar nada.
+        """
         total = _q2(pedido_create.monto_total)
         abonado = _q2(pedido_create.monto_abonado or Decimal("0"))
         items = pedido_create.items or []
+
+        # 0) Idempotencia: si ya llegó esta misma operación, devolver el original
+        existente = buscar_por_idempotency_key(
+            db, Pedido, pedido_create.idempotency_key
+        )
+        if existente is not None:
+            return PedidoOut.model_validate(existente), False
 
         try:
             # 1) Validar medio de pago
@@ -624,11 +637,23 @@ class PedidoService:
             db.commit()
             db.refresh(nuevo)
 
-            return PedidoOut.model_validate(nuevo)
+            return PedidoOut.model_validate(nuevo), True
 
         except HTTPException:
             db.rollback()
             raise
+        except IntegrityError as e:
+            # Carrera: dos reintentos del mismo pedido llegaron casi a la vez.
+            # El índice único de idempotency_key rechazó el segundo: devolvemos
+            # el pedido que sí se creó.
+            db.rollback()
+            existente = buscar_por_idempotency_key(
+                db, Pedido, pedido_create.idempotency_key
+            )
+            if existente is not None:
+                return PedidoOut.model_validate(existente), False
+            print("ERROR SQL crear_pedido:", repr(e))
+            raise HTTPException(status_code=500, detail=str(e))
         except SQLAlchemyError as e:
             db.rollback()
             print("ERROR SQL crear_pedido:", repr(e))
