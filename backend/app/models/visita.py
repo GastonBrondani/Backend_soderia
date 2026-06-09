@@ -30,5 +30,11 @@ class Visita(Base):
 
     fecha: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     estado: Mapped[str] = mapped_column(String(50), nullable=False)
-    
+
+    # Offline sync: clave de idempotencia (única) y uuid generado por la tablet
+    idempotency_key: Mapped[str | None] = mapped_column(
+        String(80), nullable=True, unique=True, index=True
+    )
+    client_uuid: Mapped[str | None] = mapped_column(String(80), nullable=True)
+
     cliente: Mapped["Cliente"] = relationship("Cliente", back_populates="visitas")

@@ -5,7 +5,7 @@ from pydantic import BaseModel,ConfigDict
 
 
 class VisitaBase(BaseModel):
-    fecha: Optional[datetime] = None  
+    fecha: Optional[datetime] = None
     estado: Literal[
         "cliente_compra",
         "cliente_no_compra",
@@ -13,10 +13,14 @@ class VisitaBase(BaseModel):
     ]
 
 class VisitaCreate(VisitaBase):
-    pass
+    # Offline sync: idempotencia. La tablet manda estos valores al reintentar.
+    idempotency_key: Optional[str] = None
+    client_uuid: Optional[str] = None
 
 class VisitaOut(VisitaBase):
     model_config = ConfigDict(from_attributes=True)
 
     id_visita: int
     legajo: int
+    idempotency_key: Optional[str] = None
+    client_uuid: Optional[str] = None

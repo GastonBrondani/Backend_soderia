@@ -6,8 +6,10 @@ from decimal import Decimal, ROUND_HALF_UP
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from contextlib import nullcontext
+
+from app.services.idempotencyService import buscar_por_idempotency_key
 
 from app.models.pago import Pago
 from app.models.medioPago import MedioPago
@@ -90,10 +92,17 @@ class PagoService:
         id_tipo_mov_egreso: int = 2,
         impactar_cuenta: bool = True,
         impactar_reparto: bool = True,
+        idempotency_key: str | None = None,
+        client_uuid: str | None = None,
     ) -> Pago:
         monto = _q2(monto)
         if monto <= 0:
             raise HTTPException(status_code=400, detail="monto debe ser > 0")
+
+        # Idempotencia (offline sync): si ya llegó este pago, devolver el original
+        existente = buscar_por_idempotency_key(db, Pago, idempotency_key)
+        if existente is not None:
+            return existente
 
         started_tx = not db.in_transaction()
         tx_ctx = db.begin() if started_tx else nullcontext()
@@ -179,6 +188,8 @@ class PagoService:
                     observacion=observacion,
                     id_cuenta=id_cuenta,  # ✅ AGREGAR
                     id_cliente_servicio_periodo=id_cliente_servicio_periodo,
+                    idempotency_key=idempotency_key,
+                    client_uuid=client_uuid,
                 )
                 db.add(pago)
                 db.flush()
@@ -221,6 +232,17 @@ class PagoService:
 
                 return pago
 
+        except IntegrityError as e:
+            # Carrera entre dos reintentos del mismo pago: el índice único de
+            # idempotency_key rechazó el segundo. Devolvemos el que sí se creó.
+            if started_tx:
+                db.rollback()
+            existente = buscar_por_idempotency_key(db, Pago, idempotency_key)
+            if existente is not None:
+                return existente
+            raise HTTPException(
+                status_code=500, detail=f"Error interno creando pago: {e}"
+            )
         except SQLAlchemyError as e:
             if started_tx:
                 db.rollback()

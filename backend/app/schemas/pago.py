@@ -21,6 +21,10 @@ class PagoCreate(BaseModel):
     id_pedido: Optional[int] = None
     id_repartodia: Optional[int] = None
 
+    # Offline sync: idempotencia. La tablet manda estos valores al reintentar.
+    idempotency_key: Optional[str] = None
+    client_uuid: Optional[str] = None
+
 
 class PagoOut(BaseModel):
     id_pago: int
@@ -34,6 +38,9 @@ class PagoOut(BaseModel):
     legajo: Optional[int]
     id_pedido: Optional[int]
     id_repartodia: Optional[int]
+
+    idempotency_key: Optional[str] = None
+    client_uuid: Optional[str] = None
 
     class Config:
         from_attributes = True

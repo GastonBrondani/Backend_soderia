@@ -46,6 +46,10 @@ class Pago(Base):
     observacion: Mapped[Optional[str]] = mapped_column(Text)
     id_cliente_servicio_periodo: Mapped[Optional[int]] = mapped_column(ForeignKey("cliente_servicio_periodo.id_periodo", ondelete="SET NULL"), nullable=True)
 
+    # Offline sync: clave de idempotencia (única) y uuid generado por la tablet
+    idempotency_key: Mapped[Optional[str]] = mapped_column(String(80), nullable=True, unique=True, index=True)
+    client_uuid: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+
     empresa: Mapped["Empresa"] = relationship("Empresa")
     cliente: Mapped[Optional["Cliente"]] = relationship("Cliente")
     pedido: Mapped[Optional["Pedido"]] = relationship("Pedido")
