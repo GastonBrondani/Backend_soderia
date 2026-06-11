@@ -137,6 +137,47 @@ _FORMATTERS = {
 }
 
 
+# Mapa código de evento -> clave dentro de `datos` que representa el monto
+# "principal" del evento. Para los pedidos es el total del pedido.
+_MONTO_KEYS = {
+    "PEDIDO_CREADO": "monto_total",
+    "PEDIDO_CONFIRMADO": "monto_total",
+    "PAGO_DEUDA_REGISTRADO": "monto",
+    "DEUDA_CANCELADA_TOTAL": "monto_pagado",
+    "DISPENSER_ALTA": "monto_mensual",
+    "DISPENSER_PAGO": "monto",
+    "DISPENSER_DADO_DE_BAJA": "monto_mensual",
+    "CAMBIO_PRECIO_DISPENSER": "monto_nuevo",
+    "INTERES_APLICADO": "interes_aplicado",
+    "PERIODO_VENCIDO": "monto_pendiente",
+}
+
+
+def extraer_monto(
+    codigo_evento: Optional[str],
+    datos: Optional[Mapping[str, Any]],
+) -> Optional[float]:
+    """
+    Devuelve el monto numérico "principal" del evento (p. ej. el total del
+    pedido) para que el front lo pueda usar sin parsear el texto del detalle.
+
+    - Si el evento no tiene un monto asociado o `datos` viene vacío -> None.
+    - Ante un valor no convertible a número -> None (nunca rompe la respuesta).
+    """
+    if not datos:
+        return None
+    clave = _MONTO_KEYS.get(codigo_evento or "")
+    if clave is None:
+        return None
+    valor = datos.get(clave)
+    if valor is None:
+        return None
+    try:
+        return float(valor)
+    except (TypeError, ValueError):
+        return None
+
+
 def construir_detalle(
     codigo_evento: Optional[str],
     datos: Optional[Mapping[str, Any]],
