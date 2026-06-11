@@ -1,6 +1,8 @@
 from datetime import datetime
-from typing import Optional,Literal
-from pydantic import BaseModel,ConfigDict
+from typing import Optional,Literal,List
+from pydantic import BaseModel,ConfigDict,Field,model_validator
+
+from app.schemas.envaseCliente import EnvaseMovimientoPedidoIn
 
 
 

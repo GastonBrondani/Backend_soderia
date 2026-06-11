@@ -11,6 +11,7 @@ from app.core.database import get_db
 
 from app.models.cliente import Cliente
 from app.models.visita import Visita
+from app.models.repartoDia import RepartoDia
 from app.schemas.visita import VisitaCreate, VisitaOut
 from app.api.deps import get_cliente_or_404_dep
 
