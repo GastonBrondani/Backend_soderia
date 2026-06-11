@@ -43,3 +43,6 @@ excel_para_ia
 #Pruebas
 verify_dates.py
 
+#Claude
+.claude/
+
