@@ -45,13 +45,3 @@ class HistoricoOut(BaseModel):
         if self.monto is None:
             self.monto = extraer_monto(self.evento.nombre, self.datos)
         return self
-
-
-class HistoricoFeedOut(HistoricoOut):
-    """
-    Igual que HistoricoOut pero pensado para el feed general (todos los
-    clientes): agrega el nombre del cliente para que el front lo identifique
-    sin tener que pedir el cliente aparte.
-    """
-
-    cliente_nombre: Optional[str] = None
