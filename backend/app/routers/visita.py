@@ -11,10 +11,12 @@ from app.core.database import get_db
 
 from app.models.cliente import Cliente
 from app.models.visita import Visita
+from app.models.repartoDia import RepartoDia
 from app.schemas.visita import VisitaCreate, VisitaOut
 from app.api.deps import get_cliente_or_404_dep
 
 from app.services.historicoService import registrar_evento_cliente
+from app.services.envaseClienteService import EnvaseClienteService
 from app.services.idempotencyService import buscar_por_idempotency_key
 from app.schemas.enumsHistorico import TipoEventoCodigoEnum
 
@@ -49,7 +51,44 @@ def crear_visita_cliente(payload: VisitaCreate, response: Response, cliente: Cli
     try:
         db.flush()  # 👈 genera id_visita sin hacer commit
 
-        # 2) Registrar evento histórico
+        # 2) Envases entregados/devueltos en la visita (sin pedido).
+        #    Caso típico: el cliente no compra pero devuelve el envase.
+        envases_data = []
+        if payload.envases:
+            rep = db.execute(
+                select(RepartoDia).where(
+                    RepartoDia.id_repartodia == payload.id_repartodia
+                )
+            ).scalar_one_or_none()
+            if rep is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Reparto del día no encontrado.",
+                )
+
+            for envase in payload.envases:
+                EnvaseClienteService.registrar_movimiento(
+                    db,
+                    legajo=cliente.legajo,
+                    id_producto=envase.id_producto,
+                    id_empresa=rep.id_empresa,
+                    entregados=envase.entregados,
+                    devueltos=envase.devueltos,
+                    id_repartodia=payload.id_repartodia,
+                    id_pedido=None,
+                    observacion=envase.observacion,
+                    fecha=fecha,
+                )
+                envases_data.append(
+                    {
+                        "id_producto": envase.id_producto,
+                        "entregados": envase.entregados,
+                        "devueltos": envase.devueltos,
+                        "observacion": envase.observacion,
+                    }
+                )
+
+        # 3) Registrar evento histórico
         registrar_evento_cliente(
             db,
             legajo=cliente.legajo,
@@ -59,6 +98,8 @@ def crear_visita_cliente(payload: VisitaCreate, response: Response, cliente: Cli
                 "id_visita": visita.id_visita,
                 "estado": visita.estado,
                 "fecha": fecha.isoformat(),
+                "id_repartodia": payload.id_repartodia,
+                "envases": envases_data,
             },
         )
 
@@ -71,6 +112,11 @@ def crear_visita_cliente(payload: VisitaCreate, response: Response, cliente: Cli
         if existente is not None:
             response.status_code = status.HTTP_200_OK
             return existente
+        raise
+    except HTTPException:
+        # Falla de negocio al mover envases (stock/saldo insuficiente, etc.):
+        # deshacer todo para no dejar la visita a medias.
+        db.rollback()
         raise
 
     db.refresh(visita)
