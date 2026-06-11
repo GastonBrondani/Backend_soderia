@@ -19,21 +19,6 @@ class VisitaCreate(VisitaBase):
     idempotency_key: Optional[str] = None
     client_uuid: Optional[str] = None
 
-    # Envases entregados/devueltos en una visita SIN pedido.
-    # Caso típico: el cliente no compra pero devuelve el envase.
-    # `id_repartodia` es obligatorio si se mandan envases (de ahí se
-    # resuelve la empresa para mover el stock).
-    id_repartodia: Optional[int] = None
-    envases: List[EnvaseMovimientoPedidoIn] = Field(default_factory=list)
-
-    @model_validator(mode="after")
-    def _validar_envases(self):
-        if self.envases and self.id_repartodia is None:
-            raise ValueError(
-                "id_repartodia es obligatorio cuando se registran envases."
-            )
-        return self
-
 class VisitaOut(VisitaBase):
     model_config = ConfigDict(from_attributes=True)
 

@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from app.schemas.tipoEvento import TipoEventoOut
-from app.utils.historicoDetalle import construir_detalle
+from app.utils.historicoDetalle import construir_detalle, extraer_monto
 
 
 class HistoricoOut(BaseModel):
@@ -30,6 +30,10 @@ class HistoricoOut(BaseModel):
     # El front puede mostrarlo directamente como descripción del evento.
     detalle: Optional[str] = None
 
+    # Monto numérico principal del evento (p. ej. el total del pedido).
+    # Es None para eventos que no tienen un monto asociado.
+    monto: Optional[float] = None
+
     @model_validator(mode="after")
     def _armar_detalle(self) -> "HistoricoOut":
         if self.detalle is None:
@@ -38,4 +42,6 @@ class HistoricoOut(BaseModel):
                 self.datos,
                 self.observacion,
             )
+        if self.monto is None:
+            self.monto = extraer_monto(self.evento.nombre, self.datos)
         return self
