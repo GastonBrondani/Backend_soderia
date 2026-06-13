@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.core.security import get_current_user
-from datetime import date
+from datetime import date, datetime, timedelta, time
 from sqlalchemy.orm import Session
 from sqlalchemy import select, delete
 from typing import List, Optional
@@ -71,6 +71,10 @@ def listar_clientes_por_fecha(
 ):
     id_dia = fecha.isoweekday()
 
+    # Range filter allows the index on visita(fecha) to be used.
+    fecha_inicio = datetime.combine(fecha, time.min)
+    fecha_fin = fecha_inicio + timedelta(days=1)
+
     # Subquery: última visita por cliente en esa fecha
     v = (
         select(
@@ -82,7 +86,7 @@ def listar_clientes_por_fecha(
                 order_by=Visita.fecha.desc(),
             ).label("rn"),
         )
-        .where(func.date(Visita.fecha) == fecha)
+        .where(Visita.fecha >= fecha_inicio, Visita.fecha < fecha_fin)
         .subquery()
     )
 
