@@ -60,7 +60,19 @@ class ClientesPorDiaOut(BaseModel):
 class ClientesPorDiaSinFechaOut(BaseModel):
     id_dia: int
     nombre_dia: str
-    clientes: List[ClientePorDiaItem] 
+    clientes: List[ClientePorDiaItem]
+
+#Para mejorar la performance
+class AgendaRangoDiaOut(BaseModel):
+    fecha: date
+    id_dia: int
+    nombre_dia: str
+    clientes: List[ClientePorDiaItem]
+
+class AgendaRangoOut(BaseModel):
+    desde: date
+    hasta: date
+    dias: List[AgendaRangoDiaOut]
 
 #Este router maneja los días de visita de los clientes pasandome una fecha te muestro todos los clientes de ese dia.(Funciona)
 @router.get("/agenda/visitas", response_model=ClientesPorDiaOut)
@@ -139,7 +151,105 @@ def listar_clientes_por_fecha(
         ],
     )
 
+@router.get("/agenda/visitas/rango", response_model=AgendaRangoOut)
+def listar_clientes_por_rango(
+    desde: date = Query(..., description="YYYY-MM-DD"),
+    hasta: date = Query(..., description="YYYY-MM-DD"),
+    turno: Optional[str] = Query(None, description="Mañana | Tarde | ..."),
+    db: Session = Depends(get_db),
+):
+    if hasta < desde:
+        raise HTTPException(400, "'hasta' no puede ser anterior a 'desde'.")
+    if (hasta - desde).days > 92:
+        raise HTTPException(400, "El rango no puede superar los 92 días.")
 
+    # --- Query 1: agenda base (frecuencia de cada cliente por día de semana) ---
+    stmt = (
+        select(
+            ClienteDiaSemana.id_dia,
+            Cliente.legajo,
+            Cliente.dni,
+            Persona.nombre,
+            Persona.apellido,
+            ClienteDiaSemana.turno_visita,
+        )
+        .select_from(ClienteDiaSemana)
+        .join(Cliente, Cliente.legajo == ClienteDiaSemana.id_cliente)
+        .outerjoin(Persona, Persona.dni == Cliente.dni)
+        .order_by(
+            ClienteDiaSemana.turno_visita,
+            ClienteDiaSemana.orden,
+            Persona.apellido,
+            Persona.nombre,
+        )
+    )
+    if turno:
+        stmt = stmt.where(ClienteDiaSemana.turno_visita.ilike(turno))
+
+    schedule_rows = db.execute(stmt).all()
+
+    # Agrupo la frecuencia por día de semana (1=Lunes .. 7=Domingo)
+    sched_por_dia: dict[int, list] = {}
+    for r in schedule_rows:
+        sched_por_dia.setdefault(r.id_dia, []).append(r)
+
+    # Nombres de los días (tabla de 7 filas)
+    nombre_por_id = {
+        r.id_dia: r.nombre_dia
+        for r in db.execute(select(DiaSemana.id_dia, DiaSemana.nombre_dia)).all()
+    }
+
+    # --- Query 2: última visita por (cliente, día) dentro del rango ---
+    fecha_inicio = datetime.combine(desde, time.min)
+    fecha_fin = datetime.combine(hasta, time.min) + timedelta(days=1)
+
+    vsub = (
+        select(
+            Visita.legajo.label("legajo"),
+            func.date(Visita.fecha).label("dia"),
+            Visita.estado.label("estado"),
+            over(
+                func.row_number(),
+                partition_by=(Visita.legajo, func.date(Visita.fecha)),
+                order_by=Visita.fecha.desc(),
+            ).label("rn"),
+        )
+        .where(Visita.fecha >= fecha_inicio, Visita.fecha < fecha_fin)
+        .subquery()
+    )
+    visita_rows = db.execute(
+        select(vsub.c.legajo, vsub.c.dia, vsub.c.estado).where(vsub.c.rn == 1)
+    ).all()
+    estado_map = {(r.legajo, r.dia): r.estado for r in visita_rows}
+
+    # --- Armado: recorro fecha por fecha y proyecto la frecuencia ---
+    dias_out: List[AgendaRangoDiaOut] = []
+    cur = desde
+    while cur <= hasta:
+        id_dia = cur.isoweekday()
+        rows = sched_por_dia.get(id_dia, [])
+        clientes = [
+            ClientePorDiaItem(
+                legajo=r.legajo,
+                dni=r.dni,
+                nombre=r.nombre,
+                apellido=r.apellido,
+                turno_visita=r.turno_visita,
+                estado_visita=estado_map.get((r.legajo, cur), "pendiente"),
+            )
+            for r in rows
+        ]
+        dias_out.append(
+            AgendaRangoDiaOut(
+                fecha=cur,
+                id_dia=id_dia,
+                nombre_dia=nombre_por_id.get(id_dia, ""),
+                clientes=clientes,
+            )
+        )
+        cur += timedelta(days=1)
+
+    return AgendaRangoOut(desde=desde, hasta=hasta, dias=dias_out)
 
 # ---- Helper de validación ----
 def _validar_dias_existen(db: Session, ids: List[int]) -> None:
