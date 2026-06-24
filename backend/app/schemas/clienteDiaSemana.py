@@ -1,4 +1,5 @@
-from typing import Optional
+from typing import Optional, List
+from datetime import date
 from pydantic import BaseModel, ConfigDict
 
 from app.schemas.enums_cliente import DiaSemanaEnum, TurnoVisitaEnum, PosicionEnum
@@ -51,3 +52,25 @@ class ClienteDiaVisitaOut(BaseModel):
     id_dia: int
     nombre_dia: str
     turno_visita: Optional[str] = None
+
+class ClienteAgendaConDatosItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    legajo: int
+    dni: Optional[int] = None
+    nombre: Optional[str] = None
+    apellido: Optional[str] = None
+    turno_visita: Optional[str] = None
+    estado_visita: Optional[str] = None
+    # --- campos que antes venían del /detalle ---
+    direccion: Optional[str] = None
+    telefono: Optional[str] = None
+    id_cuenta: Optional[int] = None
+    saldo: float = 0.0
+    deuda: float = 0.0
+    observacion: Optional[str] = None   # observación del CLIENTE
+
+class AgendaConDatosOut(BaseModel):
+    fecha: date
+    id_dia: int
+    nombre_dia: str
+    clientes: List[ClienteAgendaConDatosItem]
