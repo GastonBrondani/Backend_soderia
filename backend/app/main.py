@@ -43,17 +43,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+DATA_DIR = os.getenv("DATA_DIR", "/data")
+
+_pagos_dir = os.path.join(DATA_DIR, "comprobantes", "pagos")
+_pedidos_dir = os.path.join(DATA_DIR, "comprobantes", "pedidos")
+
+os.makedirs(_pagos_dir, exist_ok=True)
+os.makedirs(_pedidos_dir, exist_ok=True)
+
 app.mount(
     "/docs/comprobantes/pagos",
-    StaticFiles(directory="/data/comprobantes/pagos"),
+    StaticFiles(directory=_pagos_dir),
     name="comprobantes_pagos",
 )
 
-os.makedirs("/data/comprobantes/pedidos", exist_ok=True)
-
 app.mount(
     "/docs/comprobantes/pedidos",
-    StaticFiles(directory="/data/comprobantes/pedidos"),
+    StaticFiles(directory=_pedidos_dir),
     name="comprobantes_pedidos",
 )
 

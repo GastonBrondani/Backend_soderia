@@ -1,0 +1,33 @@
+name: Deploy Staging (Droplet)
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configurar SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DO_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan ${{ secrets.DO_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy en Droplet (staging)
+        run: |
+          ssh ${{ secrets.DO_USERNAME }}@${{ secrets.DO_HOST }} << 'EOF'
+            set -e
+
+            cd /opt/soderia-staging/backend
+
+            git fetch origin develop
+            git reset --hard origin/develop
+
+            docker compose -f docker-compose.staging.yml -p soderia-staging up -d --build
+
+            docker compose -f docker-compose.staging.yml -p soderia-staging exec -T backend alembic upgrade heads
+          EOF
