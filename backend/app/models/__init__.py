@@ -38,6 +38,7 @@ from .pago import Pago
 from .clienteServicio import ClienteServicio
 from .clienteServicioPeriodo import ClienteServicioPeriodo
 from .listaPrecioServicio import ListaPrecioServicio
+from .movimientoEnvaseCliente import MovimientoEnvaseCliente
 
 
 __all__ = [
@@ -81,4 +82,5 @@ __all__ = [
     "ClienteServicio",
     "ClienteServicioPeriodo",
     "ListaPrecioServicio",
+    "MovimientoEnvaseCliente",
 ]
