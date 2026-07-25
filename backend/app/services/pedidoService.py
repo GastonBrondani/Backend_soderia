@@ -122,6 +122,23 @@ class PedidoService:
                     status_code=409,
                     detail="El reparto enviado no coincide con el reparto del pedido.",
                 )
+            # Idempotencia de confirmación: si este pedido ya fue confirmado
+            # (existe movimiento de stock o pago asociado), no re-aplicamos nada.
+            # Devolvemos el pedido tal cual para que un reintento offline sea
+            # seguro y la sync lo tome como OK (200) en vez de fallar con 409.
+            ya_confirmado = (
+                db.execute(
+                    select(MovimientoStock).where(
+                        MovimientoStock.id_pedido == ped.id_pedido
+                    )
+                ).first()
+                or db.execute(
+                    select(Pago.id_pago).where(Pago.id_pedido == ped.id_pedido)
+                ).first()
+            )
+            if ya_confirmado:
+                db.rollback()  # soltamos los locks tomados con with_for_update
+                return PedidoOut.model_validate(ped)
 
             total = _q2(ped.monto_total or Decimal("0"))
             abonado = _q2(ped.monto_abonado or Decimal("0"))
